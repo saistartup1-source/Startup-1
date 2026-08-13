@@ -169,6 +169,15 @@ function decompressInvoice(data: any): Invoice {
 }
 
 /**
+ * Returns direct URL to uploaded PDF file in server storage
+ */
+export function getInvoicePdfStorageUrl(invoice: Invoice): string {
+  const origin = getPublicOrigin();
+  const cleanNum = String(invoice.invoiceNumber).trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `${origin}/uploads/bills/invoice_${cleanNum}.pdf`;
+}
+
+/**
  * Creates a permanent, ultra-compact public link for an invoice.
  */
 export function createInvoicePermalink(invoice: Invoice): string {

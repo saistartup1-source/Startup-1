@@ -3,7 +3,8 @@ import { Invoice, ShopSettings } from '../types';
 import { InvoicePreviewA4 } from './InvoicePreviewA4';
 import { InvoicePreviewThermal } from './InvoicePreviewThermal';
 import { downloadInvoicePDF, shareInvoicePDF, generateInvoicePDFFile } from '../utils/pdfGenerator';
-import { createInvoicePermalink } from '../utils/permalink';
+import { createInvoicePermalink, getInvoicePdfStorageUrl } from '../utils/permalink';
+import { uploadInvoicePdfToStorage } from '../utils/pdfUploader';
 import {
   X,
   Printer,
@@ -65,6 +66,17 @@ export const InvoiceModal: React.FC<Props> = ({
     }
   };
 
+  // Auto-upload PDF to storage when modal opens
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const elementId = viewMode === 'a4' ? 'printable-invoice-a4' : 'printable-invoice-thermal';
+      uploadInvoicePdfToStorage(invoice, elementId).catch((err) =>
+        console.error('Background PDF upload error:', err)
+      );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [invoice, viewMode]);
+
   // WhatsApp Share Payload Text Generator
   const generateMessageText = (pdfBlobUrl?: string) => {
     const totalDiscount = invoice.itemDiscountTotal + invoice.additionalDiscount;
@@ -75,7 +87,7 @@ export const InvoiceModal: React.FC<Props> = ({
       )
       .join('\n');
 
-    const permalink = createInvoicePermalink(invoice);
+    const pdfStorageUrl = getInvoicePdfStorageUrl(invoice);
 
     return `*SAI CLOTHES RAILWAY*
 *Thank you for buying! Visit again!* 🛍️✨
@@ -93,6 +105,9 @@ ${itemsList}
 *Paid Amount:* ₹${invoice.amountPaid}
 ${invoice.dueAmount > 0 ? `*Balance Due (Udhar):* ₹${invoice.dueAmount}` : ''}
 *Payment Mode:* ${invoice.paymentMode}
+
+📄 *PDF Receipt Link:*
+${pdfStorageUrl}
 
 Thank you for shopping with us at Sai Clothes Railway!
 Present this digital bill within 7 days for any exchanges.
@@ -136,9 +151,11 @@ Have a wonderful day! 🙏`;
     setShareSuccess(true);
     setTimeout(() => setShareSuccess(false), 3000);
 
-    // Background PDF download if requested (runs asynchronously so WhatsApp opens instantly)
+    // Background PDF upload and download if requested
+    const elementId = viewMode === 'a4' ? 'printable-invoice-a4' : 'printable-invoice-thermal';
+    uploadInvoicePdfToStorage(invoice, elementId).catch((err) => console.error('Background PDF storage upload error:', err));
+
     if (autoDownloadPdf) {
-      const elementId = viewMode === 'a4' ? 'printable-invoice-a4' : 'printable-invoice-thermal';
       const fileName = `Sai_Clothes_Invoice_${invoice.invoiceNumber}.pdf`;
       downloadInvoicePDF(elementId, fileName).catch((err) => console.error('Background PDF download error:', err));
     }
