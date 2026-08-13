@@ -87,7 +87,7 @@ export const InvoiceModal: React.FC<Props> = ({
       )
       .join('\n');
 
-    const pdfStorageUrl = getInvoicePdfStorageUrl(invoice);
+    const permalink = createInvoicePermalink(invoice);
 
     return `*SAI CLOTHES RAILWAY*
 *Thank you for buying! Visit again!* 🛍️✨
@@ -106,8 +106,8 @@ ${itemsList}
 ${invoice.dueAmount > 0 ? `*Balance Due (Udhar):* ₹${invoice.dueAmount}` : ''}
 *Payment Mode:* ${invoice.paymentMode}
 
-📄 *PDF Receipt Link:*
-${pdfStorageUrl}
+📄 *Digital Bill & PDF Link:*
+${permalink}
 
 Thank you for shopping with us at Sai Clothes Railway!
 Present this digital bill within 7 days for any exchanges.
