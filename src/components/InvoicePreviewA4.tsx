@@ -107,16 +107,8 @@ export const InvoicePreviewA4: React.FC<Props> = ({ invoice, shop }) => {
           </div>
           <div className="flex md:justify-end items-center gap-2 pt-1">
             <span className="text-slate-500">Payment Status:</span>
-            <span
-              className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                invoice.status === 'Paid'
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : invoice.status === 'Partial'
-                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                  : 'bg-rose-100 text-rose-800 border border-rose-300'
-              }`}
-            >
-              {invoice.status.toUpperCase()}
+            <span className="font-bold px-2 py-0.5 rounded text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300">
+              PAID
             </span>
           </div>
         </div>
@@ -337,18 +329,12 @@ export const InvoicePreviewA4: React.FC<Props> = ({ invoice, shop }) => {
           </div>
 
           <div className="border-t border-slate-200 pt-2 text-[11px] space-y-1">
-            <div className="flex justify-between text-slate-700">
-              <span>Amount Paid:</span>
-              <span className="font-mono font-bold text-emerald-700">
-                {formatCurrency(invoice.amountPaid)}
+            <div className="flex justify-between text-slate-700 font-bold">
+              <span>Amount Received ({invoice.paymentMode}):</span>
+              <span className="font-mono text-emerald-700">
+                {formatCurrency(invoice.grandTotal)}
               </span>
             </div>
-            {invoice.dueAmount > 0 && (
-              <div className="flex justify-between text-rose-700 font-bold bg-rose-50 p-1.5 rounded border border-rose-200">
-                <span>Balance Due (Udhar):</span>
-                <span className="font-mono">{formatCurrency(invoice.dueAmount)}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>

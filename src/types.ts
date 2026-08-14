@@ -13,7 +13,7 @@ export interface InvoiceItem {
   total: number; // sellingPrice * quantity
 }
 
-export type PaymentMode = 'Cash' | 'UPI' | 'Card' | 'Credit (Udhar)' | 'Split';
+export type PaymentMode = 'Cash' | 'UPI' | 'Card';
 
 export interface CustomerInfo {
   name: string;
@@ -42,7 +42,7 @@ export interface Invoice {
   paymentMode: PaymentMode;
   notes?: string;
   isGstInvoice: boolean;
-  status: 'Paid' | 'Partial' | 'Unpaid';
+  status: 'Paid';
   createdAt: string;
 }
 

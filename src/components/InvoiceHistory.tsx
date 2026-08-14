@@ -4,12 +4,14 @@ import { formatCurrency } from '../utils/calculator';
 import {
   Search,
   Share2,
-  Eye,
   Trash2,
   Receipt,
   FileText,
   Download,
   Crosshair,
+  Banknote,
+  Smartphone,
+  CreditCard,
 } from 'lucide-react';
 
 interface Props {
@@ -28,7 +30,6 @@ export const InvoiceHistory: React.FC<Props> = ({
   isMiniMilitiaTheme = true,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Partial' | 'Unpaid'>('All');
   const [dateFilter, setDateFilter] = useState<'All' | 'Today' | 'ThisMonth'>('All');
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -42,9 +43,6 @@ export const InvoiceHistory: React.FC<Props> = ({
       inv.customer.name.toLowerCase().includes(term) ||
       inv.customer.phone.includes(term);
 
-    // Status
-    const matchesStatus = statusFilter === 'All' || inv.status === statusFilter;
-
     // Date
     let matchesDate = true;
     if (dateFilter === 'Today') {
@@ -53,7 +51,7 @@ export const InvoiceHistory: React.FC<Props> = ({
       matchesDate = inv.date.startsWith(thisMonthStr);
     }
 
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesDate;
   });
 
   // Calculate Metrics
@@ -62,7 +60,10 @@ export const InvoiceHistory: React.FC<Props> = ({
     (sum, i) => sum + i.itemDiscountTotal + i.additionalDiscount,
     0
   );
-  const totalPendingDue = filteredInvoices.reduce((sum, i) => sum + i.dueAmount, 0);
+  const totalItemsSold = filteredInvoices.reduce(
+    (sum, i) => sum + i.items.reduce((s, item) => s + item.quantity, 0),
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -76,13 +77,13 @@ export const InvoiceHistory: React.FC<Props> = ({
           }`}
         >
           <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[BATTALION TOTAL SALES]' : 'Filtered Total Sales'}
+            {isMiniMilitiaTheme ? '[TOTAL SALES COLLECTED]' : 'Total Sales Revenue'}
           </span>
           <div className="text-2xl font-black text-amber-400 font-mono mt-1">
             {formatCurrency(totalRevenue)}
           </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">
-            Across {filteredInvoices.length} bill records
+          <span className="text-[11px] text-emerald-400 mt-1 block font-bold">
+            100% Fully Paid (Cash/UPI/Card)
           </span>
         </div>
 
@@ -94,13 +95,13 @@ export const InvoiceHistory: React.FC<Props> = ({
           }`}
         >
           <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[DISCOUNT FIRED]' : 'Total Discounts Given'}
+            {isMiniMilitiaTheme ? '[DISCOUNT SAVINGS GIVEN]' : 'Total Discounts Given'}
           </span>
           <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
             {formatCurrency(totalDiscounts)}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
-            Saved for clients
+            Automatic customer savings
           </span>
         </div>
 
@@ -112,13 +113,13 @@ export const InvoiceHistory: React.FC<Props> = ({
           }`}
         >
           <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[PENDING UDHAR RECON]' : 'Pending Udhar Due'}
+            {isMiniMilitiaTheme ? '[GARMENTS DISPATCHED]' : 'Total Items Sold'}
           </span>
-          <div className="text-2xl font-black text-rose-400 font-mono mt-1">
-            {formatCurrency(totalPendingDue)}
+          <div className="text-2xl font-black text-cyan-400 font-mono mt-1">
+            {totalItemsSold} Pcs
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
-            Credit outstanding
+            Cloth garments quantity
           </span>
         </div>
 
@@ -130,7 +131,7 @@ export const InvoiceHistory: React.FC<Props> = ({
           }`}
         >
           <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[WAR ARCHIVE CARGO]' : 'Total Bills Count'}
+            {isMiniMilitiaTheme ? '[WAR ARCHIVE CARGO]' : 'Total Invoices Count'}
           </span>
           <div className="text-2xl font-black text-white font-mono mt-1">
             {filteredInvoices.length} Bills
@@ -197,39 +198,6 @@ export const InvoiceHistory: React.FC<Props> = ({
               This Month
             </button>
           </div>
-
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-emerald-800">
-            <button
-              onClick={() => setStatusFilter('All')}
-              className={`px-3 py-1 rounded font-bold transition cursor-pointer ${
-                statusFilter === 'All'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              All Status
-            </button>
-            <button
-              onClick={() => setStatusFilter('Paid')}
-              className={`px-3 py-1 rounded font-bold transition cursor-pointer ${
-                statusFilter === 'Paid'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Paid
-            </button>
-            <button
-              onClick={() => setStatusFilter('Partial')}
-              className={`px-3 py-1 rounded font-bold transition cursor-pointer ${
-                statusFilter === 'Partial'
-                  ? 'bg-amber-600 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Udhar
-            </button>
-          </div>
         </div>
       </div>
 
@@ -257,6 +225,7 @@ export const InvoiceHistory: React.FC<Props> = ({
                   <th className="py-3 px-4">Invoice #</th>
                   <th className="py-3 px-4">Date & Time</th>
                   <th className="py-3 px-4">Customer Details</th>
+                  <th className="py-3 px-4 text-center">Payment Mode</th>
                   <th className="py-3 px-4 text-center">Items</th>
                   <th className="py-3 px-4 text-right">Bill Total (₹)</th>
                   <th className="py-3 px-4 text-right">Discount</th>
@@ -294,6 +263,22 @@ export const InvoiceHistory: React.FC<Props> = ({
                           </p>
                         )}
                       </td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[10px] ${
+                            inv.paymentMode === 'UPI'
+                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-600'
+                              : inv.paymentMode === 'Card'
+                              ? 'bg-cyan-950 text-cyan-300 border border-cyan-600'
+                              : 'bg-amber-950 text-amber-300 border border-amber-600'
+                          }`}
+                        >
+                          {inv.paymentMode === 'UPI' && <Smartphone className="w-3 h-3" />}
+                          {inv.paymentMode === 'Card' && <CreditCard className="w-3 h-3" />}
+                          {inv.paymentMode === 'Cash' && <Banknote className="w-3 h-3" />}
+                          {inv.paymentMode}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-center font-bold text-amber-300">
                         {inv.items.length} pcs
                       </td>
@@ -304,16 +289,8 @@ export const InvoiceHistory: React.FC<Props> = ({
                         {totalSavings > 0 ? formatCurrency(totalSavings) : '—'}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span
-                          className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                            inv.status === 'Paid'
-                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-600'
-                              : inv.status === 'Partial'
-                              ? 'bg-amber-950 text-amber-300 border border-amber-600'
-                              : 'bg-rose-950 text-rose-300 border border-rose-600'
-                          }`}
-                        >
-                          {inv.status}
+                        <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-600">
+                          PAID
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">

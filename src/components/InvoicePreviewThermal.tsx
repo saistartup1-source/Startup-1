@@ -48,7 +48,7 @@ export const InvoicePreviewThermal: React.FC<Props> = ({ invoice, shop }) => {
         {invoice.customer.phone && <div>Ph: +91 {invoice.customer.phone}</div>}
         <div className="flex justify-between font-bold pt-1">
           <span>Pay Mode: {invoice.paymentMode}</span>
-          <span>Status: {invoice.status.toUpperCase()}</span>
+          <span>Status: PAID</span>
         </div>
       </div>
 
@@ -115,13 +115,9 @@ export const InvoicePreviewThermal: React.FC<Props> = ({ invoice, shop }) => {
           <span>{formatCurrency(invoice.grandTotal)}</span>
         </div>
 
-        <div className="flex justify-between text-[10px] pt-1">
-          <span>Paid: {formatCurrency(invoice.amountPaid)}</span>
-          {invoice.dueAmount > 0 && (
-            <span className="font-bold text-red-600">
-              Due: {formatCurrency(invoice.dueAmount)}
-            </span>
-          )}
+        <div className="flex justify-between text-[10px] pt-1 font-bold">
+          <span>Amount Paid ({invoice.paymentMode}):</span>
+          <span>{formatCurrency(invoice.grandTotal)}</span>
         </div>
       </div>
 

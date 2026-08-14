@@ -102,9 +102,7 @@ ${itemsList}
 *Subtotal (MRP):* ₹${invoice.subtotalMRP}
 *Total Savings / Discount:* -₹${totalDiscount}
 *Net Bill Amount:* *₹${invoice.grandTotal}*
-*Paid Amount:* ₹${invoice.amountPaid}
-${invoice.dueAmount > 0 ? `*Balance Due (Udhar):* ₹${invoice.dueAmount}` : ''}
-*Payment Mode:* ${invoice.paymentMode}
+*Payment Mode:* ${invoice.paymentMode} (PAID)
 
 📄 *Digital Bill & PDF Link:*
 ${permalink}

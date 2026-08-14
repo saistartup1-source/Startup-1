@@ -8,31 +8,25 @@ import {
   CustomerInfo,
 } from '../types';
 import { calculateItemDiscount, formatCurrency } from '../utils/calculator';
-import { downloadInvoicePDF } from '../utils/pdfGenerator';
 import {
   Plus,
   Trash2,
   Printer,
   Share2,
-  Sparkles,
   ShoppingBag,
   User,
   Phone,
   Calendar,
   Clock,
-  FileSpreadsheet,
-  Download,
   Crosshair,
-  Shield,
-  Zap,
-  Flame,
+  Sparkles,
   Tag,
   FileText,
-  Send,
-  Loader2,
   Banknote,
   Smartphone,
   CreditCard,
+  RotateCcw,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface Props {
@@ -98,11 +92,8 @@ export const InvoiceForm: React.FC<Props> = ({
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(
     existingInvoice?.paymentMode || 'Cash'
   );
-  const [amountPaid, setAmountPaid] = useState<number | ''>(
-    existingInvoice?.amountPaid ?? ''
-  );
   const [notes, setNotes] = useState(existingInvoice?.notes || '');
-  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState(false);
 
   // Calculate live item discount preview
   const liveMRP = Number(itemMRP) || 0;
@@ -114,7 +105,7 @@ export const InvoiceForm: React.FC<Props> = ({
   const handleAddItem = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!itemName.trim()) {
-      alert('Please enter or select item name');
+      alert('Please enter or select garment item name');
       return;
     }
     if (liveMRP <= 0 || liveSP <= 0) {
@@ -205,25 +196,50 @@ export const InvoiceForm: React.FC<Props> = ({
   const roundedGrandTotal = Math.round(rawGrandTotal);
   const roundOff = Math.round((roundedGrandTotal - rawGrandTotal) * 100) / 100;
 
-  const actualPaid =
-    amountPaid === '' ? roundedGrandTotal : Math.max(0, Number(amountPaid));
-  const dueAmount = Math.max(0, roundedGrandTotal - actualPaid);
+  // Handle circular Reset for a New Customer
+  const handleNewCustomerReset = () => {
+    // Generate next invoice number based on current prefix and number
+    let nextNumStr = `${shop.invoicePrefix}${shop.nextInvoiceNumber}`;
+    try {
+      const match = invoiceNumber.match(/^([A-Za-z_-]+)(\d+)$/);
+      if (match) {
+        const prefix = match[1];
+        const num = parseInt(match[2], 10) + 1;
+        nextNumStr = `${prefix}${num}`;
+      }
+    } catch {
+      nextNumStr = `${shop.invoicePrefix}${Date.now().toString().slice(-4)}`;
+    }
 
-  let status: 'Paid' | 'Partial' | 'Unpaid' = 'Paid';
-  if (dueAmount >= roundedGrandTotal) {
-    status = 'Unpaid';
-  } else if (dueAmount > 0) {
-    status = 'Partial';
-  }
+    setInvoiceNumber(nextNumStr);
+    setDate(new Date().toISOString().split('T')[0]);
+    setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    setCustomer({ name: '', phone: '', address: '', gstin: '' });
+    setItems([]);
+    setItemName('');
+    setItemMRP('');
+    setItemSellingPrice('');
+    setItemQty(1);
+    setAdditionalDiscount(0);
+    setPaymentMode('Cash');
+    setNotes('');
 
-  // Handle final submission
+    setResetFeedback(true);
+    setTimeout(() => setResetFeedback(false), 2000);
+  };
+
+  // Handle final invoice object compilation - ALWAYS fully PAID and preserves exact paymentMode
   const buildInvoiceObject = (): Invoice => {
+    const finalCustomerName = customer.name.trim() || 'Walk-in Customer';
     return {
       id: existingInvoice?.id || 'inv-' + Date.now(),
       invoiceNumber,
       date,
       time,
-      customer,
+      customer: {
+        ...customer,
+        name: finalCustomerName,
+      },
       items,
       subtotalMRP,
       subtotalSP,
@@ -233,16 +249,17 @@ export const InvoiceForm: React.FC<Props> = ({
       gstAmount: isGstInvoice ? Math.round(gstAmount * 100) / 100 : 0,
       roundOff,
       grandTotal: roundedGrandTotal,
-      amountPaid: actualPaid,
-      dueAmount,
+      amountPaid: roundedGrandTotal,
+      dueAmount: 0,
       paymentMode,
       notes,
       isGstInvoice,
-      status,
+      status: 'Paid',
       createdAt: existingInvoice?.createdAt || new Date().toISOString(),
     };
   };
 
+  // Perform action WITHOUT clearing the form (All customer details remain until user taps the circular reset button)
   const handleAction = (
     action: 'save' | 'printA4' | 'printThermal' | 'whatsapp'
   ) => {
@@ -258,14 +275,15 @@ export const InvoiceForm: React.FC<Props> = ({
     <div className="space-y-6">
       {/* Customer & Invoice Header Details Card */}
       <div
-        className={`rounded-xl shadow-md border p-5 transition-all ${
+        className={`rounded-2xl shadow-xl border p-5 transition-all relative ${
           isMiniMilitiaTheme
             ? 'bg-slate-900 border-emerald-700/80 text-white camo-card-border'
             : 'bg-white border-slate-200 text-slate-900'
         }`}
       >
+        {/* Top Header with Circular New Customer Reset Button */}
         <div
-          className={`flex items-center justify-between border-b pb-3 mb-4 ${
+          className={`flex items-center justify-between border-b pb-3 mb-4 gap-3 ${
             isMiniMilitiaTheme ? 'border-emerald-800/80' : 'border-slate-100'
           }`}
         >
@@ -275,42 +293,73 @@ export const InvoiceForm: React.FC<Props> = ({
             ) : (
               <User className="w-5 h-5 text-amber-600" />
             )}
-            <span className={isMiniMilitiaTheme ? 'text-amber-400 font-black' : ''}>
+            <span className={isMiniMilitiaTheme ? 'text-amber-400 font-black tracking-wide' : 'font-bold'}>
               {isMiniMilitiaTheme
-                ? '[TARGET CLIENT RECON & BILL META]'
-                : 'Customer & Invoice Info'}
+                ? '[BILL DESK & CUSTOMER INFO]'
+                : 'Customer & Invoice Details'}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium font-mono">
-              {isMiniMilitiaTheme ? 'BILL CODE:' : 'Invoice No:'}
-            </span>
-            <input
-              type="text"
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-              className="font-mono font-bold text-slate-950 bg-amber-400 border border-amber-300 rounded px-2 py-1 text-xs w-28 text-center"
-            />
+
+          {/* Right Corner: Bill Number & Circular New Customer Refresh Button */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-slate-400 font-medium font-mono hidden sm:inline">
+                {isMiniMilitiaTheme ? 'BILL CODE:' : 'Bill #:'}
+              </span>
+              <input
+                type="text"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                className="font-mono font-bold text-slate-950 bg-amber-400 border border-amber-300 rounded-lg px-2.5 py-1 text-xs w-28 text-center shadow-inner"
+              />
+            </div>
+
+            {/* CIRCULAR REFRESH BUTTON FOR NEW CUSTOMER */}
+            <div className="relative group">
+              <button
+                id="btn-new-customer-refresh"
+                type="button"
+                onClick={handleNewCustomerReset}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 hover:from-amber-400 hover:to-amber-200 text-slate-950 font-black shadow-lg shadow-amber-500/40 flex items-center justify-center transition-all duration-300 active:scale-90 border-2 border-amber-200 cursor-pointer"
+                title="New Customer: Refresh page & clear form for next customer"
+              >
+                <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:rotate-180 duration-500" />
+              </button>
+
+              {/* Tooltip / Label */}
+              <span className="absolute -bottom-8 right-0 bg-slate-950 text-amber-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/60 whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 shadow-md">
+                New Customer (Reset Form)
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Reset Feedback Notification */}
+        {resetFeedback && (
+          <div className="mb-4 bg-emerald-950/90 border border-emerald-500 text-emerald-300 px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 animate-bounce">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>Form refreshed! Ready for new customer bill.</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label
-              className={`block text-xs font-semibold mb-1 ${
+              className={`block text-xs font-semibold mb-1 flex items-center justify-between ${
                 isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
               }`}
             >
-              Client Name / Target Customer
+              <span>Customer Name</span>
+              <span className="text-[10px] text-slate-400 font-normal italic">(Optional)</span>
             </label>
             <div className="relative">
               <User className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="e.g. Ramesh Sharma"
+                placeholder="e.g. Ramesh Sharma (Optional)"
                 value={customer.name}
                 onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-                className={`w-full pl-8 pr-3 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
+                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
                   isMiniMilitiaTheme
                     ? 'bg-slate-950 border border-emerald-800 text-amber-300 font-mono'
                     : 'bg-slate-50 border border-slate-300 text-slate-800'
@@ -321,20 +370,21 @@ export const InvoiceForm: React.FC<Props> = ({
 
           <div>
             <label
-              className={`block text-xs font-semibold mb-1 ${
+              className={`block text-xs font-semibold mb-1 flex items-center justify-between ${
                 isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
               }`}
             >
-              Client Mobile (+91)
+              <span>Customer Mobile (+91)</span>
+              <span className="text-[10px] text-slate-400 font-normal italic">(For WhatsApp)</span>
             </label>
             <div className="relative">
               <Phone className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="10-digit mobile"
+                placeholder="10-digit mobile number"
                 value={customer.phone}
                 onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
-                className={`w-full pl-8 pr-3 py-1.5 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
+                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
                   isMiniMilitiaTheme
                     ? 'bg-slate-950 border border-emerald-800 text-amber-300'
                     : 'bg-slate-50 border border-slate-300 text-slate-800'
@@ -357,7 +407,7 @@ export const InvoiceForm: React.FC<Props> = ({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className={`w-full pl-8 pr-3 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
+                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
                   isMiniMilitiaTheme
                     ? 'bg-slate-950 border border-emerald-800 text-slate-200 font-mono'
                     : 'bg-slate-50 border border-slate-300 text-slate-800'
@@ -380,7 +430,7 @@ export const InvoiceForm: React.FC<Props> = ({
                 type="text"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className={`w-full pl-8 pr-3 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
+                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
                   isMiniMilitiaTheme
                     ? 'bg-slate-950 border border-emerald-800 text-slate-200 font-mono'
                     : 'bg-slate-50 border border-slate-300 text-slate-800'
@@ -391,56 +441,45 @@ export const InvoiceForm: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Quick Add Catalog Buttons (Mini Militia Ammo Presets) */}
+      {/* Quick Add Presets Pills */}
       {quickProducts.length > 0 && (
         <div
-          className={`rounded-xl p-4 border transition-all ${
+          className={`p-4 rounded-2xl border transition-all ${
             isMiniMilitiaTheme
-              ? 'bg-slate-950 border-emerald-700/80'
-              : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+              ? 'bg-slate-900/90 border-emerald-800/80 text-white'
+              : 'bg-white border-slate-200'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 font-bold text-xs font-mono">
-              <Tag className="w-4 h-4 text-amber-400" />
-              <span className={isMiniMilitiaTheme ? 'text-amber-400' : 'text-amber-900'}>
-                {isMiniMilitiaTheme
-                  ? '[AMMO DEPOT PRESETS • 1-TAP BILLING]'
-                  : 'Quick Clothes Add (1-Tap Fast Billing)'}
-              </span>
-            </div>
-            <span className="text-[11px] text-emerald-400/80 font-mono">
-              Tap preset to load ammo item
-            </span>
+          <div className="flex items-center gap-2 mb-3 font-mono text-xs font-bold text-emerald-400">
+            <Tag className="w-4 h-4" />
+            <span>⚡ QUICK GARMENT PRESETS (TAP TO ADD TO BILL)</span>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex flex-wrap gap-2">
             {quickProducts.map((p) => {
-              const discAmount = p.mrp - p.sellingPrice;
-              const discPercent = Math.round((discAmount / p.mrp) * 100);
-
+              const discPercent =
+                p.mrp > p.sellingPrice
+                  ? Math.round(((p.mrp - p.sellingPrice) / p.mrp) * 100)
+                  : 0;
               return (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => handleQuickAdd(p)}
-                  className={`border text-left shrink-0 p-2.5 rounded-xl shadow-sm transition hover:scale-[1.03] cursor-pointer group font-mono ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition cursor-pointer border shadow-sm hover:scale-105 active:scale-95 ${
                     isMiniMilitiaTheme
-                      ? 'bg-slate-900 border-emerald-700 hover:border-amber-400 text-white'
-                      : 'bg-white hover:bg-amber-100/60 border-amber-300 text-slate-800'
+                      ? 'bg-slate-950 hover:bg-emerald-950 border-emerald-700/60 text-slate-200 hover:border-emerald-400'
+                      : 'bg-slate-50 hover:bg-amber-50 border-slate-300 text-slate-800 hover:border-amber-400'
                   }`}
                 >
-                  <div className="font-bold text-xs group-hover:text-amber-400 flex items-center gap-1">
-                    <span>{p.name}</span>
-                    <span className="text-[10px] text-amber-300">({p.size})</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-[11px]">
-                    <span className="text-slate-400 line-through">₹{p.mrp}</span>
-                    <span className="font-extrabold text-amber-400">₹{p.sellingPrice}</span>
-                    <span className="bg-emerald-900 text-emerald-300 border border-emerald-600 text-[9px] px-1.5 py-0.2 rounded font-bold">
+                  <span className="text-amber-400">+{p.name}</span>
+                  <span className="text-slate-400 text-[10px]">({p.size})</span>
+                  <span className="text-emerald-400">₹{p.sellingPrice}</span>
+                  {discPercent > 0 && (
+                    <span className="bg-amber-500 text-slate-950 text-[9px] px-1.5 py-0.2 rounded font-black">
                       {discPercent}% OFF
                     </span>
-                  </div>
+                  )}
                 </button>
               );
             })}
@@ -448,10 +487,9 @@ export const InvoiceForm: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Item Entry Form Row */}
-      <form
-        onSubmit={handleAddItem}
-        className={`rounded-xl shadow-md border p-5 transition-all ${
+      {/* Add Items Form Row */}
+      <div
+        className={`rounded-2xl shadow-xl border p-5 transition-all ${
           isMiniMilitiaTheme
             ? 'bg-slate-900 border-emerald-700/80 text-white camo-card-border'
             : 'bg-white border-slate-200 text-slate-900'
@@ -465,304 +503,250 @@ export const InvoiceForm: React.FC<Props> = ({
           <div className="flex items-center gap-2 font-mono font-bold text-sm">
             <ShoppingBag className="w-5 h-5 text-amber-400" />
             <span className={isMiniMilitiaTheme ? 'text-amber-400 font-black' : ''}>
-              {isMiniMilitiaTheme ? '[LOAD CLOTH ITEM / AMMO]' : 'Add Clothes Item'}
+              {isMiniMilitiaTheme
+                ? '[DISPATCH GARMENT ITEMS TO BILL]'
+                : 'Add Garment Items'}
             </span>
           </div>
-
-          {/* Live Discount Callout Badge */}
-          {liveMRP > 0 && liveSP > 0 && (
-            <div className="bg-emerald-950 border border-emerald-500 text-emerald-300 text-xs px-3 py-1 rounded-full font-mono font-black flex items-center gap-2 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-              <span>
-                DISCOUNT LAUNCHED: -{formatCurrency(liveDiscountInfo.discountAmount)} (
-                {liveDiscountInfo.discountPercent}% OFF)
-              </span>
-            </div>
-          )}
+          <span className="text-xs text-slate-400 font-mono">
+            {items.length} item(s) added
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-          {/* Item Name */}
-          <div className="md:col-span-3">
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
-              Cloth Description / Item Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Cotton Shirt / Designer Saree"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              className={`w-full px-3 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
-                isMiniMilitiaTheme
-                  ? 'bg-slate-950 border border-emerald-800 text-white font-mono'
-                  : 'bg-slate-50 border border-slate-300 text-slate-800'
-              }`}
-            />
+        <form onSubmit={handleAddItem} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 items-end">
+            {/* Item Name */}
+            <div className="md:col-span-4">
+              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+                Item / Garment Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Cotton Shirt, Denim Jeans"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                className={`w-full px-3 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 ${
+                  isMiniMilitiaTheme
+                    ? 'bg-slate-950 border border-emerald-800 text-amber-300 font-mono'
+                    : 'bg-slate-50 border border-slate-300 text-slate-800'
+                }`}
+              />
+            </div>
+
+            {/* Category */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+                Category
+              </label>
+              <select
+                value={itemCategory}
+                onChange={(e) => setItemCategory(e.target.value)}
+                className={`w-full px-2.5 py-2 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
+                  isMiniMilitiaTheme
+                    ? 'bg-slate-950 border border-emerald-800 text-slate-200'
+                    : 'bg-slate-50 border border-slate-300 text-slate-800'
+                }`}
+              >
+                <option value="Shirts">Shirts</option>
+                <option value="T-Shirts">T-Shirts</option>
+                <option value="Jeans">Jeans</option>
+                <option value="Trousers">Trousers</option>
+                <option value="Sarees">Sarees</option>
+                <option value="Ladies Wear">Ladies Wear</option>
+                <option value="Kids Wear">Kids Wear</option>
+                <option value="Ethic Wear">Ethnic Wear</option>
+                <option value="Accessories">Accessories</option>
+              </select>
+            </div>
+
+            {/* Size */}
+            <div className="md:col-span-1">
+              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+                Size
+              </label>
+              <input
+                type="text"
+                placeholder="L / 32"
+                value={itemSize}
+                onChange={(e) => setItemSize(e.target.value)}
+                className={`w-full px-2 py-2 rounded-xl text-xs font-mono font-bold text-center focus:ring-2 focus:ring-amber-500 ${
+                  isMiniMilitiaTheme
+                    ? 'bg-slate-950 border border-emerald-800 text-amber-300'
+                    : 'bg-slate-50 border border-slate-300 text-slate-800'
+                }`}
+              />
+            </div>
+
+            {/* MRP */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+                Original MRP (₹)
+              </label>
+              <input
+                type="number"
+                placeholder="1499"
+                value={itemMRP}
+                onChange={(e) =>
+                  setItemMRP(e.target.value === '' ? '' : Number(e.target.value))
+                }
+                className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
+                  isMiniMilitiaTheme
+                    ? 'bg-slate-950 border border-emerald-800 text-slate-300'
+                    : 'bg-slate-50 border border-slate-300 text-slate-800'
+                }`}
+              />
+            </div>
+
+            {/* Selling Price */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold mb-1 font-mono text-amber-400 font-bold">
+                Selling Rate (₹)
+              </label>
+              <input
+                type="number"
+                placeholder="899"
+                value={itemSellingPrice}
+                onChange={(e) =>
+                  setItemSellingPrice(
+                    e.target.value === '' ? '' : Number(e.target.value)
+                  )
+                }
+                className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-black focus:ring-2 focus:ring-amber-500 ${
+                  isMiniMilitiaTheme
+                    ? 'bg-slate-950 border-2 border-amber-400 text-amber-300'
+                    : 'bg-amber-50 border-2 border-amber-500 text-slate-900'
+                }`}
+              />
+            </div>
+
+            {/* Quantity */}
+            <div className="md:col-span-1">
+              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+                Qty
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={itemQty}
+                onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
+                className={`w-full px-2 py-2 rounded-xl text-xs font-mono font-bold text-center focus:ring-2 focus:ring-amber-500 ${
+                  isMiniMilitiaTheme
+                    ? 'bg-slate-950 border border-emerald-800 text-amber-300'
+                    : 'bg-slate-50 border border-slate-300 text-slate-800'
+                }`}
+              />
+            </div>
           </div>
 
-          {/* Category */}
-          <div className="md:col-span-2">
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
-              Category
-            </label>
-            <select
-              value={itemCategory}
-              onChange={(e) => setItemCategory(e.target.value)}
-              className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
-                isMiniMilitiaTheme
-                  ? 'bg-slate-950 border border-emerald-800 text-white font-mono'
-                  : 'bg-slate-50 border border-slate-300 text-slate-800'
-              }`}
-            >
-              <option value="Shirts">Shirts</option>
-              <option value="Jeans">Jeans</option>
-              <option value="Sarees">Sarees</option>
-              <option value="Ladies Wear">Ladies Wear</option>
-              <option value="Kids Wear">Kids Wear</option>
-              <option value="T-Shirts">T-Shirts</option>
-              <option value="Ethnic Wear">Ethnic Wear</option>
-              <option value="Trousers">Trousers</option>
-              <option value="Accessories">Accessories</option>
-            </select>
-          </div>
+          {/* Live Discount Calculator Preview & Add Button */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            {liveMRP > 0 && liveSP > 0 ? (
+              <div className="flex items-center gap-3 text-xs font-mono bg-slate-950/80 px-3 py-2 rounded-xl border border-emerald-800">
+                <span className="text-slate-400">
+                  Item Total: <strong className="text-white">₹{liveDiscountInfo.total}</strong>
+                </span>
+                <span className="text-emerald-400 font-bold">
+                  Customer Saves: ₹{liveDiscountInfo.discountAmount}
+                </span>
+                <span className="bg-emerald-600 text-white font-black px-2 py-0.5 rounded text-[10px]">
+                  {liveDiscountInfo.discountPercent}% OFF
+                </span>
+              </div>
+            ) : (
+              <div className="text-xs font-mono text-slate-500 italic">
+                * Automatic discount calculation applies instantly
+              </div>
+            )}
 
-          {/* Size */}
-          <div className="md:col-span-1">
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
-              Size
-            </label>
-            <select
-              value={itemSize}
-              onChange={(e) => setItemSize(e.target.value)}
-              className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
-                isMiniMilitiaTheme
-                  ? 'bg-slate-950 border border-emerald-800 text-white font-mono'
-                  : 'bg-slate-50 border border-slate-300 text-slate-800'
-              }`}
-            >
-              <option value="S">S</option>
-              <option value="M">M</option>
-              <option value="L">L</option>
-              <option value="XL">XL</option>
-              <option value="XXL">XXL</option>
-              <option value="30">30</option>
-              <option value="32">32</option>
-              <option value="34">34</option>
-              <option value="36">36</option>
-              <option value="Free Size">Free Size</option>
-            </select>
-          </div>
-
-          {/* MRP */}
-          <div className="md:col-span-2">
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
-              MRP (₹) <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="number"
-              placeholder="e.g. 1500"
-              value={itemMRP}
-              onChange={(e) => setItemMRP(e.target.value === '' ? '' : Number(e.target.value))}
-              className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold font-mono focus:ring-2 focus:ring-amber-500 ${
-                isMiniMilitiaTheme
-                  ? 'bg-slate-950 border border-emerald-800 text-amber-300'
-                  : 'bg-slate-50 border border-slate-300 text-slate-900'
-              }`}
-            />
-          </div>
-
-          {/* Selling Price */}
-          <div className="md:col-span-2">
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
-              Selling Price (₹) <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="number"
-              placeholder="e.g. 999"
-              value={itemSellingPrice}
-              onChange={(e) =>
-                setItemSellingPrice(e.target.value === '' ? '' : Number(e.target.value))
-              }
-              className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold font-mono focus:ring-2 focus:ring-amber-500 ${
-                isMiniMilitiaTheme
-                  ? 'bg-slate-950 border border-emerald-800 text-emerald-400'
-                  : 'bg-slate-50 border border-slate-300 text-emerald-800'
-              }`}
-            />
-          </div>
-
-          {/* Quantity */}
-          <div className="md:col-span-1">
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
-              Qty
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={itemQty}
-              onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
-              className={`w-full px-2 py-1.5 rounded-lg text-xs font-mono font-black text-center ${
-                isMiniMilitiaTheme
-                  ? 'bg-slate-950 border border-emerald-800 text-amber-300'
-                  : 'bg-slate-50 border border-slate-300 text-slate-900'
-              }`}
-            />
-          </div>
-
-          {/* Add Button */}
-          <div className="md:col-span-1">
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1 shadow-md transition cursor-pointer font-mono"
+              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black font-mono text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>LOAD</span>
+              <span>ADD TO INVOICE</span>
             </button>
           </div>
-        </div>
-      </form>
+        </form>
 
-      {/* Items Table in Current Bill */}
-      <div
-        className={`rounded-xl shadow-md border overflow-hidden transition-all ${
-          isMiniMilitiaTheme
-            ? 'bg-slate-900 border-emerald-700/80'
-            : 'bg-white border-slate-200'
-        }`}
-      >
-        <div className="p-4 bg-slate-950 text-white flex items-center justify-between border-b border-emerald-800/80">
-          <div className="font-bold text-sm flex items-center gap-2 font-mono">
-            <FileSpreadsheet className="w-4 h-4 text-amber-400" />
-            <span>
-              {isMiniMilitiaTheme
-                ? `[CURRENT AMMO INVOICE CARGO • ${items.length} ITEMS]`
-                : `Invoice Items List (${items.length} Items)`}
-            </span>
-          </div>
-          {itemDiscountTotal > 0 && (
-            <div className="bg-emerald-900 text-emerald-300 border border-emerald-500 text-xs px-3 py-0.5 rounded-full font-mono font-bold">
-              CUSTOMER SAVINGS: {formatCurrency(itemDiscountTotal)}
-            </div>
-          )}
-        </div>
-
-        {items.length === 0 ? (
-          <div className="p-10 text-center text-slate-400 space-y-2">
-            <ShoppingBag className="w-10 h-10 mx-auto text-emerald-600" />
-            <p className="font-mono font-bold text-sm text-slate-300">
-              No cloth items added to bill yet.
-            </p>
-            <p className="text-xs text-slate-400 font-mono">
-              Use item form above or tap quick ammo presets.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
+        {/* Items Table */}
+        {items.length > 0 && (
+          <div className="mt-6 overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-950 text-emerald-300 font-bold uppercase text-[11px] border-b border-emerald-800/80">
+              <thead className="bg-slate-950 text-emerald-300 font-bold uppercase text-[11px] border-b border-emerald-800">
                 <tr>
-                  <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">Cloth Description</th>
-                  <th className="py-3 px-4 text-center">Size</th>
-                  <th className="py-3 px-4 text-right">MRP (₹)</th>
-                  <th className="py-3 px-4 text-right">Selling Price (₹)</th>
-                  <th className="py-3 px-4 text-center">Qty</th>
-                  <th className="py-3 px-4 text-right">Discount</th>
-                  <th className="py-3 px-4 text-right">Net Total (₹)</th>
-                  <th className="py-3 px-4 text-center">Action</th>
+                  <th className="py-2.5 px-3">#</th>
+                  <th className="py-2.5 px-3">Garment</th>
+                  <th className="py-2.5 px-3 text-center">Size</th>
+                  <th className="py-2.5 px-3 text-right">MRP</th>
+                  <th className="py-2.5 px-3 text-right">Rate</th>
+                  <th className="py-2.5 px-3 text-center">Qty</th>
+                  <th className="py-2.5 px-3 text-right">Discount</th>
+                  <th className="py-2.5 px-3 text-right">Total</th>
+                  <th className="py-2.5 px-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {items.map((item, idx) => {
-                  const lineSavings = (item.mrp - item.sellingPrice) * item.quantity;
+                  const savings = (item.mrp - item.sellingPrice) * item.quantity;
                   return (
                     <tr
                       key={item.id}
                       className={
                         isMiniMilitiaTheme
-                          ? 'hover:bg-slate-800/60 text-slate-200'
+                          ? 'hover:bg-slate-800/50 text-slate-200'
                           : 'hover:bg-slate-50 text-slate-800'
                       }
                     >
-                      <td className="py-3 px-4 text-slate-400 font-bold">{idx + 1}</td>
-                      <td className="py-3 px-4">
-                        <p className="font-bold text-white">{item.name}</p>
-                        <p className="text-[10px] text-emerald-400/80">{item.category}</p>
+                      <td className="py-2.5 px-3 text-slate-500">{idx + 1}</td>
+                      <td className="py-2.5 px-3 font-bold text-white">
+                        {item.name}
+                        {item.category && (
+                          <span className="ml-2 text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+                            {item.category}
+                          </span>
+                        )}
                       </td>
-                      <td className="py-3 px-4 text-center font-bold text-amber-300">
-                        {item.size}
+                      <td className="py-2.5 px-3 text-center text-amber-300 font-bold">
+                        {item.size || '—'}
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-400 line-through">
-                        {formatCurrency(item.mrp)}
+                      <td className="py-2.5 px-3 text-right text-slate-400 line-through">
+                        ₹{item.mrp}
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-400">
-                        {formatCurrency(item.sellingPrice)}
+                      <td className="py-2.5 px-3 text-right font-bold text-amber-400">
+                        ₹{item.sellingPrice}
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="inline-flex items-center gap-1 border border-emerald-800 rounded-lg p-0.5 bg-slate-950">
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="inline-flex items-center border border-slate-700 rounded-lg overflow-hidden bg-slate-950">
                           <button
                             type="button"
                             onClick={() => handleUpdateQty(item.id, -1)}
-                            className="w-5 h-5 flex items-center justify-center font-bold text-slate-400 hover:bg-slate-800 rounded"
+                            className="px-2 py-0.5 hover:bg-slate-800 text-amber-400 font-bold"
                           >
                             -
                           </button>
-                          <span className="w-6 text-center font-bold text-amber-300">
+                          <span className="px-2 py-0.5 font-bold text-white">
                             {item.quantity}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleUpdateQty(item.id, 1)}
-                            className="w-5 h-5 flex items-center justify-center font-bold text-slate-400 hover:bg-slate-800 rounded"
+                            className="px-2 py-0.5 hover:bg-slate-800 text-amber-400 font-bold"
                           >
                             +
                           </button>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right text-emerald-400 font-bold">
-                        {lineSavings > 0 ? (
-                          <div>
-                            <span>- {formatCurrency(lineSavings)}</span>
-                            <span className="block text-[10px] text-amber-300">
-                              ({item.discountPercent}% OFF)
-                            </span>
-                          </div>
-                        ) : (
-                          '—'
-                        )}
+                      <td className="py-2.5 px-3 text-right font-bold text-emerald-400">
+                        ₹{savings} ({item.discountPercent}%)
                       </td>
-                      <td className="py-3 px-4 text-right font-extrabold text-amber-400 text-sm">
-                        {formatCurrency(item.total)}
+                      <td className="py-2.5 px-3 text-right font-extrabold text-white text-sm">
+                        ₹{item.total}
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-3 text-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(item.id)}
-                          className="p-1.5 text-rose-400 hover:text-rose-200 hover:bg-rose-900/40 rounded-lg transition"
+                          className="p-1 hover:bg-rose-950 text-rose-400 rounded transition"
                           title="Remove item"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -777,81 +761,123 @@ export const InvoiceForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Bill Totals & Payment Actions Grid */}
+      {/* Bottom Row: Payment Mode Selector & Totals Breakdown Card */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Left Side: Simplified Payment Mode Selection (Cash / UPI / Card) */}
+        {/* Left Side: Dedicated Payment Mode Selector */}
         <div
-          id="payment-mode-section"
-          className={`md:col-span-7 rounded-2xl shadow-lg border p-5 space-y-4 ${
+          className={`md:col-span-7 rounded-2xl shadow-xl border p-5 transition-all space-y-4 ${
             isMiniMilitiaTheme
-              ? 'bg-slate-900 border-emerald-700/80 text-white'
+              ? 'bg-slate-900 border-emerald-700/80 text-white camo-card-border'
               : 'bg-white border-slate-200 text-slate-900'
           }`}
         >
-          <div>
-            <h3 className="font-bold text-sm font-mono text-amber-400 uppercase tracking-wide flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-emerald-400" />
-              Select Payment Mode
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Choose Cash, UPI, or Card to complete this bill
-            </p>
+          <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+            <span className="font-mono text-sm font-black text-amber-400 flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-amber-400" />
+              <span>PAYMENT MODE</span>
+            </span>
+            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600">
+              STATUS: 100% PAID
+            </span>
           </div>
 
+          {/* Three Dedicated Payment Mode Buttons: Cash / UPI / Card */}
           <div className="grid grid-cols-3 gap-3">
             {/* CASH */}
             <button
               id="payment-mode-cash"
               type="button"
-              onClick={() => {
-                setPaymentMode('Cash');
-                setAmountPaid(roundedGrandTotal);
-              }}
-              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2.5 transition cursor-pointer ${
+              onClick={() => setPaymentMode('Cash')}
+              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                 paymentMode === 'Cash'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-lg shadow-amber-500/30 scale-[1.03]'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 font-black shadow-lg shadow-amber-500/40 ring-2 ring-amber-400 scale-[1.03]'
                   : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-amber-500 hover:bg-slate-900 font-bold'
               }`}
             >
               <Banknote className="w-7 h-7" />
-              <span className="text-sm font-bold tracking-wide uppercase">CASH</span>
+              <span className="text-sm font-black tracking-wide uppercase">CASH</span>
+              {paymentMode === 'Cash' && (
+                <span className="text-[10px] bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                  ✓ ACTIVE
+                </span>
+              )}
             </button>
 
             {/* UPI */}
             <button
               id="payment-mode-upi"
               type="button"
-              onClick={() => {
-                setPaymentMode('UPI');
-                setAmountPaid(roundedGrandTotal);
-              }}
-              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2.5 transition cursor-pointer ${
+              onClick={() => setPaymentMode('UPI')}
+              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                 paymentMode === 'UPI'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-lg shadow-emerald-500/30 scale-[1.03]'
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-300 font-black shadow-lg shadow-emerald-500/40 ring-2 ring-emerald-400 scale-[1.03]'
                   : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-emerald-500 hover:bg-slate-900 font-bold'
               }`}
             >
               <Smartphone className="w-7 h-7" />
-              <span className="text-sm font-bold tracking-wide uppercase">UPI</span>
+              <span className="text-sm font-black tracking-wide uppercase">UPI</span>
+              {paymentMode === 'UPI' && (
+                <span className="text-[10px] bg-slate-950 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                  ✓ ACTIVE
+                </span>
+              )}
             </button>
 
             {/* CARD */}
             <button
               id="payment-mode-card"
               type="button"
-              onClick={() => {
-                setPaymentMode('Card');
-                setAmountPaid(roundedGrandTotal);
-              }}
-              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2.5 transition cursor-pointer ${
+              onClick={() => setPaymentMode('Card')}
+              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                 paymentMode === 'Card'
-                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-lg shadow-cyan-500/30 scale-[1.03]'
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-300 font-black shadow-lg shadow-cyan-500/40 ring-2 ring-cyan-400 scale-[1.03]'
                   : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-cyan-500 hover:bg-slate-900 font-bold'
               }`}
             >
               <CreditCard className="w-7 h-7" />
-              <span className="text-sm font-bold tracking-wide uppercase">CARD</span>
+              <span className="text-sm font-black tracking-wide uppercase">CARD</span>
+              {paymentMode === 'Card' && (
+                <span className="text-[10px] bg-slate-950 text-cyan-300 px-2 py-0.5 rounded-full font-bold">
+                  ✓ ACTIVE
+                </span>
+              )}
             </button>
+          </div>
+
+          {/* Optional Extra Discount & GST */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div>
+              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+                Extra Flat Discount (₹)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={additionalDiscount || ''}
+                placeholder="0"
+                onChange={(e) => setAdditionalDiscount(Number(e.target.value) || 0)}
+                className="w-full px-3 py-2 bg-slate-950 border border-emerald-800 rounded-xl text-xs font-mono text-amber-400 font-bold focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+                Tax Type
+              </label>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsGstInvoice(!isGstInvoice)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer border ${
+                    isGstInvoice
+                      ? 'bg-amber-500 text-slate-950 border-amber-400'
+                      : 'bg-slate-950 text-slate-400 border-slate-800'
+                  }`}
+                >
+                  {isGstInvoice ? 'GST Tax Invoice (5%)' : 'Standard Retail Bill'}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Optional Bill Note / Remarks */}
@@ -861,7 +887,7 @@ export const InvoiceForm: React.FC<Props> = ({
             </label>
             <input
               type="text"
-              placeholder="e.g. 7 days exchange policy applies"
+              placeholder="e.g. 7 days exchange policy with original bill"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-3 py-2 bg-slate-950 border border-emerald-800 rounded-xl text-xs font-mono text-slate-200 focus:ring-2 focus:ring-amber-500"
@@ -869,8 +895,8 @@ export const InvoiceForm: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Right Side: Grand Total & Action Buttons */}
-        <div className="md:col-span-5 bg-slate-950 text-white rounded-xl shadow-xl p-5 border-2 border-emerald-700/80 flex flex-col justify-between space-y-6">
+        {/* Right Side: Grand Total & Direct Action Buttons */}
+        <div className="md:col-span-5 bg-slate-950 text-white rounded-2xl shadow-2xl p-5 border-2 border-emerald-700/80 flex flex-col justify-between space-y-6">
           <div className="space-y-3 font-mono">
             <div className="flex items-center justify-between text-xs text-slate-400 border-b border-emerald-900/60 pb-2">
               <span>Total MRP Value:</span>
@@ -899,9 +925,14 @@ export const InvoiceForm: React.FC<Props> = ({
             )}
 
             <div className="pt-2 border-t-2 border-emerald-700">
-              <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider block">
-                [NET GRAND TOTAL]
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider block">
+                  [NET GRAND TOTAL]
+                </span>
+                <span className="text-xs bg-slate-900 text-amber-300 border border-emerald-600 px-2 py-0.5 rounded-full font-mono font-bold">
+                  Paid via {paymentMode}
+                </span>
+              </div>
               <div className="text-3xl font-black text-amber-400 font-mono mt-1">
                 {formatCurrency(roundedGrandTotal)}
               </div>
@@ -923,7 +954,7 @@ export const InvoiceForm: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handleAction('printThermal')}
-                className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-emerald-700 transition cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-emerald-700 transition cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5 text-amber-400" />
                 <span>Thermal Slip</span>
@@ -932,7 +963,7 @@ export const InvoiceForm: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handleAction('whatsapp')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-emerald-400/40 shadow-lg shadow-emerald-900/50"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-emerald-400/40 shadow-lg shadow-emerald-900/50"
                 title="Send bill directly to customer's WhatsApp"
               >
                 <Share2 className="w-3.5 h-3.5" />
@@ -947,9 +978,9 @@ export const InvoiceForm: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => handleAction('save')}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold py-1.5 px-3 rounded-lg text-xs text-center border border-slate-800 transition cursor-pointer"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold py-1.5 px-3 rounded-xl text-xs text-center border border-slate-800 transition cursor-pointer"
             >
-              Save Record Only (No Print)
+              Save Record Only
             </button>
           </div>
         </div>
