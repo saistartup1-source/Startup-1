@@ -43,16 +43,6 @@ export default function App() {
     }
   });
 
-  // Mini Militia Theme Mode (Default true as requested)
-  const [isMiniMilitiaTheme, setIsMiniMilitiaTheme] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('sai_clothes_militia_theme');
-      return saved !== null ? JSON.parse(saved) : true;
-    } catch {
-      return true;
-    }
-  });
-
   // UI state: Only 'new' | 'history' | 'catalog'
   const [activeTab, setActiveTab] = useState<'new' | 'history' | 'catalog'>('new');
 
@@ -70,7 +60,9 @@ export default function App() {
     if (invoice) {
       setPublicInvoice(invoice);
     } else if (billNumber) {
-      const matched = invoices.find((i) => i.invoiceNumber.toLowerCase() === billNumber.toLowerCase());
+      const matched = invoices.find(
+        (i) => i.invoiceNumber.toLowerCase() === billNumber.toLowerCase()
+      );
       if (matched) {
         setPublicInvoice(matched);
       }
@@ -101,14 +93,6 @@ export default function App() {
       console.error(e);
     }
   }, [invoices]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sai_clothes_militia_theme', JSON.stringify(isMiniMilitiaTheme));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [isMiniMilitiaTheme]);
 
   // Handler for saving/creating a new invoice
   const handleSaveInvoice = (
@@ -178,23 +162,9 @@ export default function App() {
   }
 
   return (
-    <div
-      className={`min-h-screen flex flex-col font-sans transition-colors selection:bg-amber-400 selection:text-slate-950 ${
-        isMiniMilitiaTheme
-          ? 'military-camo-bg text-slate-100'
-          : 'bg-slate-100 text-slate-800'
-      }`}
-    >
+    <div className="min-h-screen flex flex-col font-sans bg-slate-50 text-slate-800 selection:bg-amber-400 selection:text-slate-950">
       {/* Header Bar */}
-      <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        shop={shop}
-        invoices={invoices}
-        onNewInvoiceClick={() => setActiveTab('new')}
-        isMiniMilitiaTheme={isMiniMilitiaTheme}
-        setIsMiniMilitiaTheme={setIsMiniMilitiaTheme}
-      />
+      <Header shop={shop} />
 
       {/* Main Workspace Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 my-2 pb-28">
@@ -203,7 +173,6 @@ export default function App() {
             shop={shop}
             quickProducts={quickProducts}
             onSaveInvoice={handleSaveInvoice}
-            isMiniMilitiaTheme={isMiniMilitiaTheme}
           />
         )}
 
@@ -215,7 +184,6 @@ export default function App() {
             }
             onDeleteInvoice={handleDeleteInvoice}
             onShareWhatsApp={triggerWhatsApp}
-            isMiniMilitiaTheme={isMiniMilitiaTheme}
           />
         )}
 
@@ -233,21 +201,14 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         invoicesCount={invoices.length}
-        isMiniMilitiaTheme={isMiniMilitiaTheme}
       />
 
       {/* Footer */}
-      <footer
-        className={`border-t text-center text-xs py-4 mb-16 print:hidden font-mono ${
-          isMiniMilitiaTheme
-            ? 'bg-slate-950 text-slate-400 border-emerald-900/80'
-            : 'bg-slate-900 text-slate-400 border-slate-800'
-        }`}
-      >
-        <p className="font-bold text-amber-400">
+      <footer className="border-t border-slate-200 bg-white text-center text-xs py-4 mb-16 print:hidden font-mono text-slate-500">
+        <p className="font-bold text-slate-900">
           SAI CLOTHES RAILWAY — Retail Billing Software
         </p>
-        <p className="text-[11px] text-slate-400 mt-0.5">
+        <p className="text-[11px] text-slate-500 mt-0.5">
           Opposite Railway Station • Fast Billing, Thermal PDF & WhatsApp Link System
         </p>
       </footer>

@@ -18,8 +18,6 @@ import {
   Phone,
   Calendar,
   Clock,
-  Crosshair,
-  Sparkles,
   Tag,
   FileText,
   Banknote,
@@ -27,6 +25,7 @@ import {
   CreditCard,
   RotateCcw,
   CheckCircle2,
+  Receipt,
 } from 'lucide-react';
 
 interface Props {
@@ -37,7 +36,6 @@ interface Props {
     action: 'save' | 'printA4' | 'printThermal' | 'whatsapp'
   ) => void;
   existingInvoice?: Invoice | null;
-  isMiniMilitiaTheme?: boolean;
 }
 
 export const InvoiceForm: React.FC<Props> = ({
@@ -45,7 +43,6 @@ export const InvoiceForm: React.FC<Props> = ({
   quickProducts,
   onSaveInvoice,
   existingInvoice,
-  isMiniMilitiaTheme = true,
 }) => {
   // Form State
   const [invoiceNumber, setInvoiceNumber] = useState(
@@ -73,7 +70,7 @@ export const InvoiceForm: React.FC<Props> = ({
   // Current row input state
   const [itemName, setItemName] = useState('');
   const [itemCategory, setItemCategory] = useState('Shirts');
-  const [itemSize, setItemSize] = useState('L');
+  const [itemSize, setItemSize] = useState('');
   const [itemHsn, setItemHsn] = useState('6205');
   const [itemMRP, setItemMRP] = useState<number | ''>('');
   const [itemSellingPrice, setItemSellingPrice] = useState<number | ''>('');
@@ -96,35 +93,42 @@ export const InvoiceForm: React.FC<Props> = ({
   const [resetFeedback, setResetFeedback] = useState(false);
 
   // Calculate live item discount preview
-  const liveMRP = Number(itemMRP) || 0;
   const liveSP = Number(itemSellingPrice) || 0;
+  // If MRP is not provided, default to Selling Price (so 0% item-level discount)
+  const liveMRP = itemMRP !== '' && Number(itemMRP) > 0 ? Number(itemMRP) : liveSP;
   const liveQty = itemQty || 1;
   const liveDiscountInfo = calculateItemDiscount(liveMRP, liveSP, liveQty);
 
-  // Helper to add current item row
+  // Helper to add current item row (Name and Size are purely OPTIONAL)
   const handleAddItem = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!itemName.trim()) {
-      alert('Please enter or select garment item name');
-      return;
-    }
-    if (liveMRP <= 0 || liveSP <= 0) {
-      alert('Please enter valid MRP and Selling Price');
+
+    if (liveSP <= 0) {
+      alert('Please enter a valid Selling Price / Rate (₹)');
       return;
     }
 
+    // Name is optional: default to garment category or 'Garment Item'
+    const finalItemName = itemName.trim() || `${itemCategory || 'Garment'} Item`;
+    // Size is optional: default to empty string or '—'
+    const finalItemSize = itemSize.trim() || '—';
+    // MRP defaults to selling price if not provided
+    const finalMRP = liveMRP > 0 ? liveMRP : liveSP;
+
+    const discountInfo = calculateItemDiscount(finalMRP, liveSP, liveQty);
+
     const newItem: InvoiceItem = {
       id: 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      name: itemName.trim(),
+      name: finalItemName,
       category: itemCategory,
-      size: itemSize,
+      size: finalItemSize,
       hsnCode: itemHsn,
-      mrp: liveMRP,
+      mrp: finalMRP,
       sellingPrice: liveSP,
       quantity: liveQty,
-      discountAmount: liveDiscountInfo.discountAmount,
-      discountPercent: liveDiscountInfo.discountPercent,
-      total: liveDiscountInfo.total,
+      discountAmount: discountInfo.discountAmount,
+      discountPercent: discountInfo.discountPercent,
+      total: discountInfo.total,
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -133,6 +137,7 @@ export const InvoiceForm: React.FC<Props> = ({
     setItemName('');
     setItemMRP('');
     setItemSellingPrice('');
+    setItemSize('');
     setItemQty(1);
   };
 
@@ -141,9 +146,9 @@ export const InvoiceForm: React.FC<Props> = ({
     const disc = calculateItemDiscount(p.mrp, p.sellingPrice, 1);
     const newItem: InvoiceItem = {
       id: 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      name: p.name,
+      name: p.name || `${p.category} Item`,
       category: p.category,
-      size: p.size,
+      size: p.size || '—',
       hsnCode: p.hsnCode,
       mrp: p.mrp,
       sellingPrice: p.sellingPrice,
@@ -219,16 +224,17 @@ export const InvoiceForm: React.FC<Props> = ({
     setItemName('');
     setItemMRP('');
     setItemSellingPrice('');
+    setItemSize('');
     setItemQty(1);
     setAdditionalDiscount(0);
     setPaymentMode('Cash');
     setNotes('');
 
     setResetFeedback(true);
-    setTimeout(() => setResetFeedback(false), 2000);
+    setTimeout(() => setResetFeedback(false), 2500);
   };
 
-  // Handle final invoice object compilation - ALWAYS fully PAID and preserves exact paymentMode
+  // Handle final invoice object compilation - ALWAYS fully PAID
   const buildInvoiceObject = (): Invoice => {
     const finalCustomerName = customer.name.trim() || 'Walk-in Customer';
     return {
@@ -259,12 +265,12 @@ export const InvoiceForm: React.FC<Props> = ({
     };
   };
 
-  // Perform action WITHOUT clearing the form (All customer details remain until user taps the circular reset button)
+  // Perform action WITHOUT clearing the form
   const handleAction = (
     action: 'save' | 'printA4' | 'printThermal' | 'whatsapp'
   ) => {
     if (items.length === 0) {
-      alert('Please add at least one cloth item to the bill!');
+      alert('Please add at least one item to the bill!');
       return;
     }
     const inv = buildInvoiceObject();
@@ -274,43 +280,25 @@ export const InvoiceForm: React.FC<Props> = ({
   return (
     <div className="space-y-6">
       {/* Customer & Invoice Header Details Card */}
-      <div
-        className={`rounded-2xl shadow-xl border p-5 transition-all relative ${
-          isMiniMilitiaTheme
-            ? 'bg-slate-900 border-emerald-700/80 text-white camo-card-border'
-            : 'bg-white border-slate-200 text-slate-900'
-        }`}
-      >
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 transition-all relative">
         {/* Top Header with Circular New Customer Reset Button */}
-        <div
-          className={`flex items-center justify-between border-b pb-3 mb-4 gap-3 ${
-            isMiniMilitiaTheme ? 'border-emerald-800/80' : 'border-slate-100'
-          }`}
-        >
-          <div className="flex items-center gap-2 font-mono font-bold text-sm">
-            {isMiniMilitiaTheme ? (
-              <Crosshair className="w-5 h-5 text-amber-400" />
-            ) : (
-              <User className="w-5 h-5 text-amber-600" />
-            )}
-            <span className={isMiniMilitiaTheme ? 'text-amber-400 font-black tracking-wide' : 'font-bold'}>
-              {isMiniMilitiaTheme
-                ? '[BILL DESK & CUSTOMER INFO]'
-                : 'Customer & Invoice Details'}
-            </span>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-3">
+          <div className="flex items-center gap-2 font-mono font-bold text-sm text-slate-800">
+            <User className="w-5 h-5 text-amber-600" />
+            <span className="font-bold">Customer & Invoice Details</span>
           </div>
 
           {/* Right Corner: Bill Number & Circular New Customer Refresh Button */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-slate-400 font-medium font-mono hidden sm:inline">
-                {isMiniMilitiaTheme ? 'BILL CODE:' : 'Bill #:'}
+              <span className="text-slate-500 font-medium font-mono hidden sm:inline">
+                Bill #:
               </span>
               <input
                 type="text"
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
-                className="font-mono font-bold text-slate-950 bg-amber-400 border border-amber-300 rounded-lg px-2.5 py-1 text-xs w-28 text-center shadow-inner"
+                className="font-mono font-bold text-slate-900 bg-amber-100 border border-amber-300 rounded-lg px-2.5 py-1 text-xs w-28 text-center shadow-xs"
               />
             </div>
 
@@ -320,15 +308,15 @@ export const InvoiceForm: React.FC<Props> = ({
                 id="btn-new-customer-refresh"
                 type="button"
                 onClick={handleNewCustomerReset}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 hover:from-amber-400 hover:to-amber-200 text-slate-950 font-black shadow-lg shadow-amber-500/40 flex items-center justify-center transition-all duration-300 active:scale-90 border-2 border-amber-200 cursor-pointer"
+                className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 hover:from-amber-400 hover:to-amber-200 text-slate-950 font-black shadow-md shadow-amber-500/20 flex items-center justify-center transition-all duration-300 active:scale-90 border-2 border-amber-300 cursor-pointer"
                 title="New Customer: Refresh page & clear form for next customer"
               >
-                <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:rotate-180 duration-500" />
+                <RotateCcw className="w-5 h-5 transition-transform group-hover:rotate-180 duration-500" />
               </button>
 
               {/* Tooltip / Label */}
-              <span className="absolute -bottom-8 right-0 bg-slate-950 text-amber-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/60 whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 shadow-md">
-                New Customer (Reset Form)
+              <span className="absolute -bottom-8 right-0 bg-slate-900 text-amber-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-slate-700 whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-20 shadow-md">
+                New Customer (Clear Form)
               </span>
             </div>
           </div>
@@ -336,19 +324,15 @@ export const InvoiceForm: React.FC<Props> = ({
 
         {/* Reset Feedback Notification */}
         {resetFeedback && (
-          <div className="mb-4 bg-emerald-950/90 border border-emerald-500 text-emerald-300 px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 animate-bounce">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <div className="mb-4 bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 animate-bounce">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>Form refreshed! Ready for new customer bill.</span>
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label
-              className={`block text-xs font-semibold mb-1 flex items-center justify-between ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
+            <label className="block text-xs font-semibold mb-1 text-slate-700 flex items-center justify-between">
               <span>Customer Name</span>
               <span className="text-[10px] text-slate-400 font-normal italic">(Optional)</span>
             </label>
@@ -359,21 +343,13 @@ export const InvoiceForm: React.FC<Props> = ({
                 placeholder="e.g. Ramesh Sharma (Optional)"
                 value={customer.name}
                 onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-amber-300 font-mono'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
           </div>
 
           <div>
-            <label
-              className={`block text-xs font-semibold mb-1 flex items-center justify-between ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
+            <label className="block text-xs font-semibold mb-1 text-slate-700 flex items-center justify-between">
               <span>Customer Mobile (+91)</span>
               <span className="text-[10px] text-slate-400 font-normal italic">(For WhatsApp)</span>
             </label>
@@ -384,21 +360,13 @@ export const InvoiceForm: React.FC<Props> = ({
                 placeholder="10-digit mobile number"
                 value={customer.phone}
                 onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
-                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-amber-300'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
           </div>
 
           <div>
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
+            <label className="block text-xs font-semibold mb-1 text-slate-700">
               Billing Date
             </label>
             <div className="relative">
@@ -407,21 +375,13 @@ export const InvoiceForm: React.FC<Props> = ({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-slate-200 font-mono'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
           </div>
 
           <div>
-            <label
-              className={`block text-xs font-semibold mb-1 ${
-                isMiniMilitiaTheme ? 'text-emerald-300 font-mono' : 'text-slate-700'
-              }`}
-            >
+            <label className="block text-xs font-semibold mb-1 text-slate-700">
               Billing Time
             </label>
             <div className="relative">
@@ -430,11 +390,7 @@ export const InvoiceForm: React.FC<Props> = ({
                 type="text"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-slate-200 font-mono'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
           </div>
@@ -443,15 +399,9 @@ export const InvoiceForm: React.FC<Props> = ({
 
       {/* Quick Add Presets Pills */}
       {quickProducts.length > 0 && (
-        <div
-          className={`p-4 rounded-2xl border transition-all ${
-            isMiniMilitiaTheme
-              ? 'bg-slate-900/90 border-emerald-800/80 text-white'
-              : 'bg-white border-slate-200'
-          }`}
-        >
-          <div className="flex items-center gap-2 mb-3 font-mono text-xs font-bold text-emerald-400">
-            <Tag className="w-4 h-4" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs transition-all">
+          <div className="flex items-center gap-2 mb-3 font-mono text-xs font-bold text-slate-700">
+            <Tag className="w-4 h-4 text-amber-600" />
             <span>⚡ QUICK GARMENT PRESETS (TAP TO ADD TO BILL)</span>
           </div>
 
@@ -466,17 +416,13 @@ export const InvoiceForm: React.FC<Props> = ({
                   key={p.id}
                   type="button"
                   onClick={() => handleQuickAdd(p)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition cursor-pointer border shadow-sm hover:scale-105 active:scale-95 ${
-                    isMiniMilitiaTheme
-                      ? 'bg-slate-950 hover:bg-emerald-950 border-emerald-700/60 text-slate-200 hover:border-emerald-400'
-                      : 'bg-slate-50 hover:bg-amber-50 border-slate-300 text-slate-800 hover:border-amber-400'
-                  }`}
+                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition cursor-pointer border border-slate-200 bg-slate-50 hover:bg-amber-50 text-slate-800 hover:border-amber-400 shadow-xs hover:scale-105 active:scale-95"
                 >
-                  <span className="text-amber-400">+{p.name}</span>
-                  <span className="text-slate-400 text-[10px]">({p.size})</span>
-                  <span className="text-emerald-400">₹{p.sellingPrice}</span>
+                  <span className="text-slate-900">+{p.name}</span>
+                  {p.size && <span className="text-slate-500 text-[10px]">({p.size})</span>}
+                  <span className="text-emerald-700 font-extrabold">₹{p.sellingPrice}</span>
                   {discPercent > 0 && (
-                    <span className="bg-amber-500 text-slate-950 text-[9px] px-1.5 py-0.2 rounded font-black">
+                    <span className="bg-amber-100 text-amber-800 border border-amber-300 text-[9px] px-1.5 py-0.2 rounded font-black">
                       {discPercent}% OFF
                     </span>
                   )}
@@ -488,64 +434,43 @@ export const InvoiceForm: React.FC<Props> = ({
       )}
 
       {/* Add Items Form Row */}
-      <div
-        className={`rounded-2xl shadow-xl border p-5 transition-all ${
-          isMiniMilitiaTheme
-            ? 'bg-slate-900 border-emerald-700/80 text-white camo-card-border'
-            : 'bg-white border-slate-200 text-slate-900'
-        }`}
-      >
-        <div
-          className={`flex items-center justify-between border-b pb-3 mb-4 ${
-            isMiniMilitiaTheme ? 'border-emerald-800/80' : 'border-slate-100'
-          }`}
-        >
-          <div className="flex items-center gap-2 font-mono font-bold text-sm">
-            <ShoppingBag className="w-5 h-5 text-amber-400" />
-            <span className={isMiniMilitiaTheme ? 'text-amber-400 font-black' : ''}>
-              {isMiniMilitiaTheme
-                ? '[DISPATCH GARMENT ITEMS TO BILL]'
-                : 'Add Garment Items'}
-            </span>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 transition-all">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+          <div className="flex items-center gap-2 font-mono font-bold text-sm text-slate-800">
+            <ShoppingBag className="w-5 h-5 text-amber-600" />
+            <span>Add Garment Items</span>
           </div>
-          <span className="text-xs text-slate-400 font-mono">
-            {items.length} item(s) added
+          <span className="text-xs text-slate-500 font-mono">
+            {items.length} item(s) in list
           </span>
         </div>
 
         <form onSubmit={handleAddItem} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 items-end">
-            {/* Item Name */}
+            {/* Item Name - OPTIONAL */}
             <div className="md:col-span-4">
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Item / Garment Name
+              <label className="block text-xs font-semibold mb-1 text-slate-700 flex items-center justify-between">
+                <span>Garment Name</span>
+                <span className="text-[10px] text-slate-400 font-normal italic">(Optional)</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. Cotton Shirt, Denim Jeans"
+                placeholder="e.g. Cotton Shirt (Optional)"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
-                className={`w-full px-3 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-amber-300 font-mono'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
 
             {/* Category */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+              <label className="block text-xs font-semibold mb-1 text-slate-700">
                 Category
               </label>
               <select
                 value={itemCategory}
                 onChange={(e) => setItemCategory(e.target.value)}
-                className={`w-full px-2.5 py-2 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-slate-200'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full px-2.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               >
                 <option value="Shirts">Shirts</option>
                 <option value="T-Shirts">T-Shirts</option>
@@ -554,74 +479,64 @@ export const InvoiceForm: React.FC<Props> = ({
                 <option value="Sarees">Sarees</option>
                 <option value="Ladies Wear">Ladies Wear</option>
                 <option value="Kids Wear">Kids Wear</option>
-                <option value="Ethic Wear">Ethnic Wear</option>
+                <option value="Ethnic Wear">Ethnic Wear</option>
                 <option value="Accessories">Accessories</option>
               </select>
             </div>
 
-            {/* Size */}
+            {/* Size - OPTIONAL */}
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Size
+              <label className="block text-xs font-semibold mb-1 text-slate-700 flex items-center justify-between">
+                <span>Size</span>
+                <span className="text-[9px] text-slate-400 font-normal italic">(Opt)</span>
               </label>
               <input
                 type="text"
                 placeholder="L / 32"
                 value={itemSize}
                 onChange={(e) => setItemSize(e.target.value)}
-                className={`w-full px-2 py-2 rounded-xl text-xs font-mono font-bold text-center focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-amber-300'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full px-2 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-center text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
 
-            {/* MRP */}
+            {/* MRP - OPTIONAL */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Original MRP (₹)
+              <label className="block text-xs font-semibold mb-1 text-slate-700 flex items-center justify-between">
+                <span>MRP (₹)</span>
+                <span className="text-[9px] text-slate-400 font-normal italic">(Optional)</span>
               </label>
               <input
                 type="number"
-                placeholder="1499"
+                placeholder="Original MRP"
                 value={itemMRP}
                 onChange={(e) =>
                   setItemMRP(e.target.value === '' ? '' : Number(e.target.value))
                 }
-                className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-slate-300'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
 
-            {/* Selling Price */}
+            {/* Selling Price - REQUIRED */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold mb-1 font-mono text-amber-400 font-bold">
-                Selling Rate (₹)
+              <label className="block text-xs font-bold mb-1 text-amber-700 font-mono">
+                Selling Rate (₹) *
               </label>
               <input
                 type="number"
-                placeholder="899"
+                placeholder="e.g. 799"
                 value={itemSellingPrice}
                 onChange={(e) =>
                   setItemSellingPrice(
                     e.target.value === '' ? '' : Number(e.target.value)
                   )
                 }
-                className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-black focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border-2 border-amber-400 text-amber-300'
-                    : 'bg-amber-50 border-2 border-amber-500 text-slate-900'
-                }`}
+                className="w-full px-3 py-2 bg-amber-50/60 border-2 border-amber-500 rounded-xl text-xs font-mono font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
             {/* Quantity */}
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
+              <label className="block text-xs font-semibold mb-1 text-slate-700">
                 Qty
               </label>
               <input
@@ -629,41 +544,41 @@ export const InvoiceForm: React.FC<Props> = ({
                 min="1"
                 value={itemQty}
                 onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
-                className={`w-full px-2 py-2 rounded-xl text-xs font-mono font-bold text-center focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-amber-300'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
+                className="w-full px-2 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-center text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
           </div>
 
           {/* Live Discount Calculator Preview & Add Button */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            {liveMRP > 0 && liveSP > 0 ? (
-              <div className="flex items-center gap-3 text-xs font-mono bg-slate-950/80 px-3 py-2 rounded-xl border border-emerald-800">
-                <span className="text-slate-400">
-                  Item Total: <strong className="text-white">₹{liveDiscountInfo.total}</strong>
+            {liveSP > 0 ? (
+              <div className="flex items-center gap-3 text-xs font-mono bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                <span className="text-slate-600">
+                  Item Total: <strong className="text-slate-900">₹{liveDiscountInfo.total}</strong>
                 </span>
-                <span className="text-emerald-400 font-bold">
-                  Customer Saves: ₹{liveDiscountInfo.discountAmount}
-                </span>
-                <span className="bg-emerald-600 text-white font-black px-2 py-0.5 rounded text-[10px]">
-                  {liveDiscountInfo.discountPercent}% OFF
-                </span>
+                {liveDiscountInfo.discountAmount > 0 && (
+                  <>
+                    <span className="text-emerald-700 font-bold">
+                      Customer Saves: ₹{liveDiscountInfo.discountAmount}
+                    </span>
+                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]">
+                      {liveDiscountInfo.discountPercent}% OFF
+                    </span>
+                  </>
+                )}
               </div>
             ) : (
               <div className="text-xs font-mono text-slate-500 italic">
-                * Automatic discount calculation applies instantly
+                * Enter Selling Rate and tap 'Add to Bill'
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black font-mono text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black font-mono text-xs rounded-xl shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>ADD TO INVOICE</span>
+              <span>ADD TO BILL</span>
             </button>
           </div>
         </form>
@@ -672,7 +587,7 @@ export const InvoiceForm: React.FC<Props> = ({
         {items.length > 0 && (
           <div className="mt-6 overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-950 text-emerald-300 font-bold uppercase text-[11px] border-b border-emerald-800">
+              <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
                 <tr>
                   <th className="py-2.5 px-3">#</th>
                   <th className="py-2.5 px-3">Garment</th>
@@ -685,68 +600,61 @@ export const InvoiceForm: React.FC<Props> = ({
                   <th className="py-2.5 px-3 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {items.map((item, idx) => {
                   const savings = (item.mrp - item.sellingPrice) * item.quantity;
                   return (
-                    <tr
-                      key={item.id}
-                      className={
-                        isMiniMilitiaTheme
-                          ? 'hover:bg-slate-800/50 text-slate-200'
-                          : 'hover:bg-slate-50 text-slate-800'
-                      }
-                    >
-                      <td className="py-2.5 px-3 text-slate-500">{idx + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-white">
+                    <tr key={item.id} className="hover:bg-slate-50 text-slate-800">
+                      <td className="py-2.5 px-3 text-slate-400">{idx + 1}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900">
                         {item.name}
                         {item.category && (
-                          <span className="ml-2 text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+                          <span className="ml-2 text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                             {item.category}
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-center text-amber-300 font-bold">
+                      <td className="py-2.5 px-3 text-center text-slate-700 font-bold">
                         {item.size || '—'}
                       </td>
                       <td className="py-2.5 px-3 text-right text-slate-400 line-through">
                         ₹{item.mrp}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-amber-400">
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">
                         ₹{item.sellingPrice}
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <div className="inline-flex items-center border border-slate-700 rounded-lg overflow-hidden bg-slate-950">
+                        <div className="inline-flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white">
                           <button
                             type="button"
                             onClick={() => handleUpdateQty(item.id, -1)}
-                            className="px-2 py-0.5 hover:bg-slate-800 text-amber-400 font-bold"
+                            className="px-2 py-0.5 hover:bg-slate-100 text-slate-700 font-bold cursor-pointer"
                           >
                             -
                           </button>
-                          <span className="px-2 py-0.5 font-bold text-white">
+                          <span className="px-2 py-0.5 font-bold text-slate-900">
                             {item.quantity}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleUpdateQty(item.id, 1)}
-                            className="px-2 py-0.5 hover:bg-slate-800 text-amber-400 font-bold"
+                            className="px-2 py-0.5 hover:bg-slate-100 text-slate-700 font-bold cursor-pointer"
                           >
                             +
                           </button>
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-emerald-400">
-                        ₹{savings} ({item.discountPercent}%)
+                      <td className="py-2.5 px-3 text-right font-bold text-emerald-700">
+                        {savings > 0 ? `₹${savings} (${item.discountPercent}%)` : '—'}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-extrabold text-white text-sm">
+                      <td className="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
                         ₹{item.total}
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(item.id)}
-                          className="p-1 hover:bg-rose-950 text-rose-400 rounded transition"
+                          className="p-1 hover:bg-rose-50 text-rose-600 rounded transition cursor-pointer"
                           title="Remove item"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -764,19 +672,13 @@ export const InvoiceForm: React.FC<Props> = ({
       {/* Bottom Row: Payment Mode Selector & Totals Breakdown Card */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left Side: Dedicated Payment Mode Selector */}
-        <div
-          className={`md:col-span-7 rounded-2xl shadow-xl border p-5 transition-all space-y-4 ${
-            isMiniMilitiaTheme
-              ? 'bg-slate-900 border-emerald-700/80 text-white camo-card-border'
-              : 'bg-white border-slate-200 text-slate-900'
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
-            <span className="font-mono text-sm font-black text-amber-400 flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-amber-400" />
+        <div className="md:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 transition-all space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <span className="font-mono text-sm font-bold text-slate-800 flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-amber-600" />
               <span>PAYMENT MODE</span>
             </span>
-            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600">
+            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
               STATUS: 100% PAID
             </span>
           </div>
@@ -790,15 +692,15 @@ export const InvoiceForm: React.FC<Props> = ({
               onClick={() => setPaymentMode('Cash')}
               className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                 paymentMode === 'Cash'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 font-black shadow-lg shadow-amber-500/40 ring-2 ring-amber-400 scale-[1.03]'
-                  : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-amber-500 hover:bg-slate-900 font-bold'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-md shadow-amber-500/20 scale-[1.02]'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-amber-400 hover:bg-amber-50/50 font-bold'
               }`}
             >
               <Banknote className="w-7 h-7" />
               <span className="text-sm font-black tracking-wide uppercase">CASH</span>
               {paymentMode === 'Cash' && (
                 <span className="text-[10px] bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full font-bold">
-                  ✓ ACTIVE
+                  ✓ SELECTED
                 </span>
               )}
             </button>
@@ -810,15 +712,15 @@ export const InvoiceForm: React.FC<Props> = ({
               onClick={() => setPaymentMode('UPI')}
               className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                 paymentMode === 'UPI'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-300 font-black shadow-lg shadow-emerald-500/40 ring-2 ring-emerald-400 scale-[1.03]'
-                  : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-emerald-500 hover:bg-slate-900 font-bold'
+                  ? 'bg-emerald-600 text-white border-emerald-500 font-black shadow-md shadow-emerald-600/20 scale-[1.02]'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50/50 font-bold'
               }`}
             >
               <Smartphone className="w-7 h-7" />
               <span className="text-sm font-black tracking-wide uppercase">UPI</span>
               {paymentMode === 'UPI' && (
-                <span className="text-[10px] bg-slate-950 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                  ✓ ACTIVE
+                <span className="text-[10px] bg-white text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                  ✓ SELECTED
                 </span>
               )}
             </button>
@@ -830,155 +732,94 @@ export const InvoiceForm: React.FC<Props> = ({
               onClick={() => setPaymentMode('Card')}
               className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                 paymentMode === 'Card'
-                  ? 'bg-cyan-500 text-slate-950 border-cyan-300 font-black shadow-lg shadow-cyan-500/40 ring-2 ring-cyan-400 scale-[1.03]'
-                  : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-cyan-500 hover:bg-slate-900 font-bold'
+                  ? 'bg-sky-600 text-white border-sky-500 font-black shadow-md shadow-sky-600/20 scale-[1.02]'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-sky-500 hover:bg-sky-50/50 font-bold'
               }`}
             >
               <CreditCard className="w-7 h-7" />
               <span className="text-sm font-black tracking-wide uppercase">CARD</span>
               {paymentMode === 'Card' && (
-                <span className="text-[10px] bg-slate-950 text-cyan-300 px-2 py-0.5 rounded-full font-bold">
-                  ✓ ACTIVE
+                <span className="text-[10px] bg-white text-sky-800 px-2 py-0.5 rounded-full font-bold">
+                  ✓ SELECTED
                 </span>
               )}
             </button>
           </div>
-
-          {/* Optional Extra Discount & GST */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <div>
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Extra Flat Discount (₹)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={additionalDiscount || ''}
-                placeholder="0"
-                onChange={(e) => setAdditionalDiscount(Number(e.target.value) || 0)}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-800 rounded-xl text-xs font-mono text-amber-400 font-bold focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Tax Type
-              </label>
-              <div className="flex items-center gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsGstInvoice(!isGstInvoice)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer border ${
-                    isGstInvoice
-                      ? 'bg-amber-500 text-slate-950 border-amber-400'
-                      : 'bg-slate-950 text-slate-400 border-slate-800'
-                  }`}
-                >
-                  {isGstInvoice ? 'GST Tax Invoice (5%)' : 'Standard Retail Bill'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Optional Bill Note / Remarks */}
-          <div className="pt-2">
-            <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-              Invoice Note / Remark (Optional)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. 7 days exchange policy with original bill"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-800 rounded-xl text-xs font-mono text-slate-200 focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
         </div>
 
         {/* Right Side: Grand Total & Direct Action Buttons */}
-        <div className="md:col-span-5 bg-slate-950 text-white rounded-2xl shadow-2xl p-5 border-2 border-emerald-700/80 flex flex-col justify-between space-y-6">
+        <div className="md:col-span-5 bg-white text-slate-900 rounded-2xl shadow-sm p-5 border border-slate-200 flex flex-col justify-between space-y-6">
           <div className="space-y-3 font-mono">
-            <div className="flex items-center justify-between text-xs text-slate-400 border-b border-emerald-900/60 pb-2">
+            <div className="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
               <span>Total MRP Value:</span>
-              <span className="line-through text-slate-500">
+              <span className="line-through text-slate-400">
                 {formatCurrency(subtotalMRP)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-emerald-400 border-b border-emerald-900/60 pb-2 font-bold">
+            <div className="flex items-center justify-between text-xs text-emerald-700 border-b border-slate-100 pb-2 font-bold">
               <span>Total Discount Savings:</span>
-              <span className="text-amber-400">
-                - {formatCurrency(itemDiscountTotal + additionalDiscount)}
+              <span className="text-emerald-700">
+                - {formatCurrency(itemDiscountTotal)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-300">
+            <div className="flex items-center justify-between text-xs text-slate-600">
               <span>Selling Subtotal:</span>
-              <span className="font-bold">{formatCurrency(netSubtotal)}</span>
+              <span className="font-bold text-slate-800">{formatCurrency(netSubtotal)}</span>
             </div>
 
-            {isGstInvoice && (
-              <div className="flex items-center justify-between text-xs text-slate-300">
-                <span>GST Tax ({gstRate}%):</span>
-                <span>{formatCurrency(gstAmount)}</span>
-              </div>
-            )}
-
-            <div className="pt-2 border-t-2 border-emerald-700">
+            <div className="pt-3 border-t-2 border-slate-200 bg-amber-50/50 p-3 rounded-xl border">
               <div className="flex items-center justify-between">
-                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider block">
-                  [NET GRAND TOTAL]
+                <span className="text-slate-700 text-xs font-black uppercase tracking-wider block">
+                  NET GRAND TOTAL
                 </span>
-                <span className="text-xs bg-slate-900 text-amber-300 border border-emerald-600 px-2 py-0.5 rounded-full font-mono font-bold">
-                  Paid via {paymentMode}
+                <span className="text-xs bg-white text-slate-800 border border-slate-300 px-2 py-0.5 rounded-full font-mono font-bold shadow-xs">
+                  {paymentMode} (Paid)
                 </span>
               </div>
-              <div className="text-3xl font-black text-amber-400 font-mono mt-1">
+              <div className="text-3xl font-black text-slate-950 font-mono mt-1">
                 {formatCurrency(roundedGrandTotal)}
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-2 pt-2 border-t border-emerald-900/80 font-mono">
+          <div className="space-y-2 pt-2 border-t border-slate-100 font-mono">
             <button
               type="button"
               onClick={() => handleAction('printA4')}
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
+              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>FIRE & PRINT A4 INVOICE</span>
+              <span>PRINT A4 INVOICE (PDF)</span>
             </button>
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleAction('printThermal')}
-                className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-emerald-700 transition cursor-pointer"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-300 transition cursor-pointer"
               >
-                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <FileText className="w-4 h-4 text-slate-600" />
                 <span>Thermal Slip</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleAction('whatsapp')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-emerald-400/40 shadow-lg shadow-emerald-900/50"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
                 title="Send bill directly to customer's WhatsApp"
               >
-                <Share2 className="w-3.5 h-3.5" />
-                <span>
-                  {customer.phone?.trim()
-                    ? `WhatsApp (+91 ${customer.phone.replace(/\D/g, '').slice(-10)})`
-                    : 'WhatsApp Direct'}
-                </span>
+                <Share2 className="w-4 h-4" />
+                <span>WhatsApp</span>
               </button>
             </div>
 
             <button
               type="button"
               onClick={() => handleAction('save')}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold py-1.5 px-3 rounded-xl text-xs text-center border border-slate-800 transition cursor-pointer"
+              className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2 px-3 rounded-xl text-xs text-center border border-slate-200 transition cursor-pointer"
             >
               Save Record Only
             </button>

@@ -8,7 +8,6 @@ import {
   Receipt,
   FileText,
   Download,
-  Crosshair,
   Banknote,
   Smartphone,
   CreditCard,
@@ -19,7 +18,6 @@ interface Props {
   onSelectInvoice: (invoice: Invoice, viewMode: 'a4' | 'thermal') => void;
   onDeleteInvoice: (id: string) => void;
   onShareWhatsApp: (invoice: Invoice) => void;
-  isMiniMilitiaTheme?: boolean;
 }
 
 export const InvoiceHistory: React.FC<Props> = ({
@@ -27,7 +25,6 @@ export const InvoiceHistory: React.FC<Props> = ({
   onSelectInvoice,
   onDeleteInvoice,
   onShareWhatsApp,
-  isMiniMilitiaTheme = true,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState<'All' | 'Today' | 'ThisMonth'>('All');
@@ -69,87 +66,57 @@ export const InvoiceHistory: React.FC<Props> = ({
     <div className="space-y-6">
       {/* Top Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div
-          className={`p-4 rounded-xl border shadow-md font-mono ${
-            isMiniMilitiaTheme
-              ? 'bg-slate-900 border-emerald-700/80 text-white'
-              : 'bg-white border-slate-200 text-slate-900'
-          }`}
-        >
-          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[TOTAL SALES COLLECTED]' : 'Total Sales Revenue'}
+        <div className="p-4 rounded-xl border border-slate-200 shadow-xs bg-white text-slate-900 font-mono">
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">
+            Total Sales Revenue
           </span>
-          <div className="text-2xl font-black text-amber-400 font-mono mt-1">
+          <div className="text-2xl font-black text-amber-600 font-mono mt-1">
             {formatCurrency(totalRevenue)}
           </div>
-          <span className="text-[11px] text-emerald-400 mt-1 block font-bold">
+          <span className="text-[11px] text-emerald-700 mt-1 block font-bold">
             100% Fully Paid (Cash/UPI/Card)
           </span>
         </div>
 
-        <div
-          className={`p-4 rounded-xl border shadow-md font-mono ${
-            isMiniMilitiaTheme
-              ? 'bg-slate-900 border-emerald-700/80 text-white'
-              : 'bg-white border-slate-200 text-slate-900'
-          }`}
-        >
-          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[DISCOUNT SAVINGS GIVEN]' : 'Total Discounts Given'}
+        <div className="p-4 rounded-xl border border-slate-200 shadow-xs bg-white text-slate-900 font-mono">
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">
+            Total Discounts Given
           </span>
-          <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
+          <div className="text-2xl font-black text-emerald-700 font-mono mt-1">
             {formatCurrency(totalDiscounts)}
           </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">
-            Automatic customer savings
+          <span className="text-[11px] text-slate-500 mt-1 block">
+            Customer savings provided
           </span>
         </div>
 
-        <div
-          className={`p-4 rounded-xl border shadow-md font-mono ${
-            isMiniMilitiaTheme
-              ? 'bg-slate-900 border-emerald-700/80 text-white'
-              : 'bg-white border-slate-200 text-slate-900'
-          }`}
-        >
-          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[GARMENTS DISPATCHED]' : 'Total Items Sold'}
+        <div className="p-4 rounded-xl border border-slate-200 shadow-xs bg-white text-slate-900 font-mono">
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">
+            Total Items Sold
           </span>
-          <div className="text-2xl font-black text-cyan-400 font-mono mt-1">
+          <div className="text-2xl font-black text-sky-700 font-mono mt-1">
             {totalItemsSold} Pcs
           </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">
-            Cloth garments quantity
+          <span className="text-[11px] text-slate-500 mt-1 block">
+            Garments dispatched
           </span>
         </div>
 
-        <div
-          className={`p-4 rounded-xl border shadow-md font-mono ${
-            isMiniMilitiaTheme
-              ? 'bg-slate-900 border-emerald-700/80 text-white'
-              : 'bg-white border-slate-200 text-slate-900'
-          }`}
-        >
-          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
-            {isMiniMilitiaTheme ? '[WAR ARCHIVE CARGO]' : 'Total Invoices Count'}
+        <div className="p-4 rounded-xl border border-slate-200 shadow-xs bg-white text-slate-900 font-mono">
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">
+            Total Bills Generated
           </span>
-          <div className="text-2xl font-black text-white font-mono mt-1">
+          <div className="text-2xl font-black text-slate-900 font-mono mt-1">
             {filteredInvoices.length} Bills
           </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">
+          <span className="text-[11px] text-slate-500 mt-1 block">
             Sai Clothes Railway
           </span>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div
-        className={`p-4 rounded-xl border shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between font-mono ${
-          isMiniMilitiaTheme
-            ? 'bg-slate-900 border-emerald-700/80 text-white'
-            : 'bg-white border-slate-200 text-slate-900'
-        }`}
-      >
+      <div className="p-4 rounded-xl border border-slate-200 shadow-xs bg-white text-slate-900 flex flex-col md:flex-row gap-3 items-center justify-between font-mono">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
           <input
@@ -157,42 +124,38 @@ export const InvoiceHistory: React.FC<Props> = ({
             placeholder="Search bill #, customer, phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full pl-9 pr-3 py-2 rounded-lg text-xs font-bold focus:ring-2 focus:ring-amber-500 ${
-              isMiniMilitiaTheme
-                ? 'bg-slate-950 border border-emerald-800 text-amber-300'
-                : 'bg-slate-50 border border-slate-300 text-slate-800'
-            }`}
+            className="w-full pl-9 pr-3 py-2 rounded-lg text-xs font-medium bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500"
           />
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto text-xs">
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-emerald-800">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
             <button
               onClick={() => setDateFilter('All')}
-              className={`px-3 py-1 rounded font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md font-bold transition cursor-pointer ${
                 dateFilter === 'All'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               All Time
             </button>
             <button
               onClick={() => setDateFilter('Today')}
-              className={`px-3 py-1 rounded font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md font-bold transition cursor-pointer ${
                 dateFilter === 'Today'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Today
             </button>
             <button
               onClick={() => setDateFilter('ThisMonth')}
-              className={`px-3 py-1 rounded font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md font-bold transition cursor-pointer ${
                 dateFilter === 'ThisMonth'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               This Month
@@ -202,17 +165,11 @@ export const InvoiceHistory: React.FC<Props> = ({
       </div>
 
       {/* Invoices List Table */}
-      <div
-        className={`rounded-xl shadow-md border overflow-hidden transition-all ${
-          isMiniMilitiaTheme
-            ? 'bg-slate-900 border-emerald-700/80'
-            : 'bg-white border-slate-200'
-        }`}
-      >
+      <div className="rounded-xl shadow-xs border border-slate-200 bg-white overflow-hidden transition-all">
         {filteredInvoices.length === 0 ? (
           <div className="p-12 text-center text-slate-400 space-y-2 font-mono">
-            <Receipt className="w-10 h-10 mx-auto text-emerald-600" />
-            <p className="font-bold text-slate-200">No invoices found in archive</p>
+            <Receipt className="w-10 h-10 mx-auto text-slate-300" />
+            <p className="font-bold text-slate-700">No invoices found</p>
             <p className="text-xs text-slate-400">
               Try clearing search filters or create a new invoice bill.
             </p>
@@ -220,7 +177,7 @@ export const InvoiceHistory: React.FC<Props> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-950 text-emerald-300 font-bold uppercase text-[11px] border-b border-emerald-800">
+              <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Invoice #</th>
                   <th className="py-3 px-4">Date & Time</th>
@@ -233,32 +190,25 @@ export const InvoiceHistory: React.FC<Props> = ({
                   <th className="py-3 px-4 text-center">Actions & PDF</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {filteredInvoices.map((inv) => {
                   const totalSavings = inv.itemDiscountTotal + inv.additionalDiscount;
 
                   return (
-                    <tr
-                      key={inv.id}
-                      className={
-                        isMiniMilitiaTheme
-                          ? 'hover:bg-slate-800/60 text-slate-200'
-                          : 'hover:bg-slate-50 text-slate-800'
-                      }
-                    >
-                      <td className="py-3 px-4 font-mono font-bold text-amber-300">
+                    <tr key={inv.id} className="hover:bg-slate-50 text-slate-800">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
                         {inv.invoiceNumber}
                       </td>
-                      <td className="py-3 px-4 text-slate-400">
+                      <td className="py-3 px-4 text-slate-500">
                         <div>{inv.date}</div>
-                        <div className="text-[10px] text-slate-500">{inv.time}</div>
+                        <div className="text-[10px] text-slate-400">{inv.time}</div>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-bold text-white">
+                        <p className="font-bold text-slate-900">
                           {inv.customer.name || 'Walk-in Customer'}
                         </p>
                         {inv.customer.phone && (
-                          <p className="text-[11px] font-mono text-emerald-400">
+                          <p className="text-[11px] font-mono text-emerald-700">
                             +91 {inv.customer.phone}
                           </p>
                         )}
@@ -267,10 +217,10 @@ export const InvoiceHistory: React.FC<Props> = ({
                         <span
                           className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[10px] ${
                             inv.paymentMode === 'UPI'
-                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-600'
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
                               : inv.paymentMode === 'Card'
-                              ? 'bg-cyan-950 text-cyan-300 border border-cyan-600'
-                              : 'bg-amber-950 text-amber-300 border border-amber-600'
+                              ? 'bg-sky-50 text-sky-800 border border-sky-300'
+                              : 'bg-amber-50 text-amber-800 border border-amber-300'
                           }`}
                         >
                           {inv.paymentMode === 'UPI' && <Smartphone className="w-3 h-3" />}
@@ -279,17 +229,17 @@ export const InvoiceHistory: React.FC<Props> = ({
                           {inv.paymentMode}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center font-bold text-amber-300">
+                      <td className="py-3 px-4 text-center font-bold text-slate-700">
                         {inv.items.length} pcs
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-extrabold text-amber-400 text-sm">
+                      <td className="py-3 px-4 text-right font-mono font-extrabold text-slate-900 text-sm">
                         {formatCurrency(inv.grandTotal)}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
                         {totalSavings > 0 ? formatCurrency(totalSavings) : '—'}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-600">
+                        <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300">
                           PAID
                         </span>
                       </td>
@@ -298,7 +248,7 @@ export const InvoiceHistory: React.FC<Props> = ({
                           {/* VIEW/DOWNLOAD PDF MODAL BUTTON */}
                           <button
                             onClick={() => onSelectInvoice(inv, 'a4')}
-                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1 shadow transition cursor-pointer"
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-xs transition cursor-pointer"
                             title="Preview & Download PDF"
                           >
                             <Download className="w-3.5 h-3.5" />
@@ -307,7 +257,7 @@ export const InvoiceHistory: React.FC<Props> = ({
 
                           <button
                             onClick={() => onSelectInvoice(inv, 'thermal')}
-                            className="p-1.5 bg-slate-950 hover:bg-slate-800 text-amber-300 rounded-lg border border-slate-700 transition cursor-pointer"
+                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-300 transition cursor-pointer"
                             title="View Thermal Receipt"
                           >
                             <FileText className="w-4 h-4" />
@@ -315,7 +265,7 @@ export const InvoiceHistory: React.FC<Props> = ({
 
                           <button
                             onClick={() => onShareWhatsApp(inv)}
-                            className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg border border-emerald-400/40 shadow transition cursor-pointer"
+                            className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-xs"
                             title={
                               inv.customer.phone
                                 ? `Send Bill directly to +91 ${inv.customer.phone} on WhatsApp`
@@ -327,7 +277,7 @@ export const InvoiceHistory: React.FC<Props> = ({
 
                           <button
                             onClick={() => onDeleteInvoice(inv.id)}
-                            className="p-1.5 hover:bg-rose-900/50 text-rose-400 rounded-lg transition cursor-pointer"
+                            className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition cursor-pointer"
                             title="Delete Invoice Record"
                           >
                             <Trash2 className="w-4 h-4" />
