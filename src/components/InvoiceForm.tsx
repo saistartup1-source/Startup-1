@@ -30,6 +30,9 @@ import {
   FileText,
   Send,
   Loader2,
+  Banknote,
+  Smartphone,
+  CreditCard,
 } from 'lucide-react';
 
 interface Props {
@@ -776,134 +779,92 @@ export const InvoiceForm: React.FC<Props> = ({
 
       {/* Bill Totals & Payment Actions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Left Side: Additional Discounts & Options */}
+        {/* Left Side: Simplified Payment Mode Selection (Cash / UPI / Card) */}
         <div
-          className={`md:col-span-7 rounded-xl shadow-md border p-5 space-y-4 ${
+          id="payment-mode-section"
+          className={`md:col-span-7 rounded-2xl shadow-lg border p-5 space-y-4 ${
             isMiniMilitiaTheme
               ? 'bg-slate-900 border-emerald-700/80 text-white'
               : 'bg-white border-slate-200 text-slate-900'
           }`}
         >
-          <h3 className="font-bold text-sm border-b border-emerald-800/80 pb-2 font-mono text-amber-400">
-            [TACTICAL PAYMENT & DISCOUNT PARAMETERS]
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Additional Discount */}
-            <div>
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Extra Flat Discount (₹)
-              </label>
-              <input
-                type="number"
-                placeholder="0"
-                value={additionalDiscount || ''}
-                onChange={(e) => setAdditionalDiscount(Number(e.target.value) || 0)}
-                className={`w-full px-3 py-1.5 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-amber-300'
-                    : 'bg-slate-50 border border-slate-300 text-slate-900'
-                }`}
-              />
-            </div>
-
-            {/* Payment Mode */}
-            <div>
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Payment Mode
-              </label>
-              <select
-                value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-                className={`w-full px-3 py-1.5 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 ${
-                  isMiniMilitiaTheme
-                    ? 'bg-slate-950 border border-emerald-800 text-white'
-                    : 'bg-slate-50 border border-slate-300 text-slate-800'
-                }`}
-              >
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
-                <option value="Card">Credit / Debit Card</option>
-                <option value="Credit (Udhar)">Credit (Udhar Ledger)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Amount Paid vs Due */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950 p-3 rounded-lg border border-emerald-800/80">
-            <div>
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Amount Received / Paid (₹)
-              </label>
-              <input
-                type="number"
-                placeholder={roundedGrandTotal.toString()}
-                value={amountPaid}
-                onChange={(e) =>
-                  setAmountPaid(e.target.value === '' ? '' : Number(e.target.value))
-                }
-                className="w-full px-3 py-1.5 bg-slate-900 border border-emerald-700 rounded-lg text-xs font-mono font-bold text-emerald-400 focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-                Balance Due (Udhar)
-              </label>
-              <div
-                className={`w-full px-3 py-1.5 rounded-lg text-xs font-mono font-bold border ${
-                  dueAmount > 0
-                    ? 'bg-rose-950/80 text-rose-300 border-rose-700'
-                    : 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
-                }`}
-              >
-                {formatCurrency(dueAmount)}
-              </div>
-            </div>
-          </div>
-
-          {/* GST Mode Toggle */}
-          <div className="bg-slate-950 border border-emerald-800 p-3 rounded-lg space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold font-mono text-amber-300">
-                <input
-                  type="checkbox"
-                  checked={isGstInvoice}
-                  onChange={(e) => setIsGstInvoice(e.target.checked)}
-                  className="w-4 h-4 text-amber-500 rounded border-slate-700 focus:ring-amber-500"
-                />
-                <span>Include GST Tax Breakdown</span>
-              </label>
-
-              {isGstInvoice && (
-                <div className="flex items-center gap-2 text-xs font-mono">
-                  <span className="text-slate-400">GST Rate:</span>
-                  <select
-                    value={gstRate}
-                    onChange={(e) => setGstRate(Number(e.target.value))}
-                    className="px-2 py-0.5 bg-slate-900 border border-emerald-700 text-amber-300 rounded text-xs font-bold"
-                  >
-                    <option value={0}>0% (Exempt)</option>
-                    <option value={5}>5% (Garments &lt; ₹1000)</option>
-                    <option value={12}>12% (Garments &gt; ₹1000)</option>
-                    <option value={18}>18% (Standard)</option>
-                  </select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Notes */}
           <div>
+            <h3 className="font-bold text-sm font-mono text-amber-400 uppercase tracking-wide flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-emerald-400" />
+              Select Payment Mode
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Choose Cash, UPI, or Card to complete this bill
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {/* CASH */}
+            <button
+              id="payment-mode-cash"
+              type="button"
+              onClick={() => {
+                setPaymentMode('Cash');
+                setAmountPaid(roundedGrandTotal);
+              }}
+              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2.5 transition cursor-pointer ${
+                paymentMode === 'Cash'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-lg shadow-amber-500/30 scale-[1.03]'
+                  : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-amber-500 hover:bg-slate-900 font-bold'
+              }`}
+            >
+              <Banknote className="w-7 h-7" />
+              <span className="text-sm font-bold tracking-wide uppercase">CASH</span>
+            </button>
+
+            {/* UPI */}
+            <button
+              id="payment-mode-upi"
+              type="button"
+              onClick={() => {
+                setPaymentMode('UPI');
+                setAmountPaid(roundedGrandTotal);
+              }}
+              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2.5 transition cursor-pointer ${
+                paymentMode === 'UPI'
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-lg shadow-emerald-500/30 scale-[1.03]'
+                  : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-emerald-500 hover:bg-slate-900 font-bold'
+              }`}
+            >
+              <Smartphone className="w-7 h-7" />
+              <span className="text-sm font-bold tracking-wide uppercase">UPI</span>
+            </button>
+
+            {/* CARD */}
+            <button
+              id="payment-mode-card"
+              type="button"
+              onClick={() => {
+                setPaymentMode('Card');
+                setAmountPaid(roundedGrandTotal);
+              }}
+              className={`p-4 rounded-xl border-2 font-mono flex flex-col items-center justify-center gap-2.5 transition cursor-pointer ${
+                paymentMode === 'Card'
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-lg shadow-cyan-500/30 scale-[1.03]'
+                  : 'bg-slate-950/90 border-emerald-900/80 text-slate-300 hover:border-cyan-500 hover:bg-slate-900 font-bold'
+              }`}
+            >
+              <CreditCard className="w-7 h-7" />
+              <span className="text-sm font-bold tracking-wide uppercase">CARD</span>
+            </button>
+          </div>
+
+          {/* Optional Bill Note / Remarks */}
+          <div className="pt-2">
             <label className="block text-xs font-semibold mb-1 font-mono text-emerald-300">
-              Invoice Remark / Exchange Policy Note
+              Invoice Note / Remark (Optional)
             </label>
             <input
               type="text"
-              placeholder="e.g. Festival offer, 7 days exchange policy applies"
+              placeholder="e.g. 7 days exchange policy applies"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-950 border border-emerald-800 rounded-lg text-xs font-mono text-slate-200"
+              className="w-full px-3 py-2 bg-slate-950 border border-emerald-800 rounded-xl text-xs font-mono text-slate-200 focus:ring-2 focus:ring-amber-500"
             />
           </div>
         </div>

@@ -9,10 +9,9 @@ import { Header } from './components/Header';
 import { InvoiceForm } from './components/InvoiceForm';
 import { InvoiceHistory } from './components/InvoiceHistory';
 import { QuickCatalogManager } from './components/QuickCatalogManager';
-import { UdharLedger } from './components/UdharLedger';
-import { ShopSettingsModal } from './components/ShopSettingsModal';
 import { InvoiceModal } from './components/InvoiceModal';
 import { PublicBillView } from './components/PublicBillView';
+import { BottomNavBar } from './components/BottomNavBar';
 import { parseInvoiceFromUrl } from './utils/permalink';
 
 export default function App() {
@@ -54,10 +53,8 @@ export default function App() {
     }
   });
 
-  // UI state
-  const [activeTab, setActiveTab] = useState<
-    'new' | 'history' | 'catalog' | 'udhar' | 'settings'
-  >('new');
+  // UI state: Only 'new' | 'history' | 'catalog'
+  const [activeTab, setActiveTab] = useState<'new' | 'history' | 'catalog'>('new');
 
   const [activeInvoiceForModal, setActiveInvoiceForModal] = useState<{
     invoice: Invoice;
@@ -158,33 +155,6 @@ export default function App() {
     }
   };
 
-  // Record payment in Udhar Ledger
-  const handleRecordPayment = (invoiceId: string, paymentAmount: number) => {
-    setInvoices((prev) =>
-      prev.map((inv) => {
-        if (inv.id === invoiceId) {
-          const newPaid = inv.amountPaid + paymentAmount;
-          const newDue = Math.max(0, inv.grandTotal - newPaid);
-          let newStatus: 'Paid' | 'Partial' | 'Unpaid' = 'Paid';
-          if (newDue >= inv.grandTotal) {
-            newStatus = 'Unpaid';
-          } else if (newDue > 0) {
-            newStatus = 'Partial';
-          }
-
-          return {
-            ...inv,
-            amountPaid: newPaid,
-            dueAmount: newDue,
-            status: newStatus,
-          };
-        }
-        return inv;
-      })
-    );
-    alert('Payment recorded successfully!');
-  };
-
   // Add/Delete Quick Products
   const handleAddQuickProduct = (p: QuickProduct) => {
     setQuickProducts((prev) => [p, ...prev]);
@@ -227,7 +197,7 @@ export default function App() {
       />
 
       {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 my-2">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 my-2 pb-28">
         {activeTab === 'new' && (
           <InvoiceForm
             shop={shop}
@@ -256,41 +226,38 @@ export default function App() {
             onDeleteProduct={handleDeleteQuickProduct}
           />
         )}
-
-        {activeTab === 'udhar' && (
-          <UdharLedger
-            invoices={invoices}
-            onRecordPayment={handleRecordPayment}
-          />
-        )}
-
-        {activeTab === 'settings' && (
-          <ShopSettingsModal shop={shop} onSaveSettings={setShop} />
-        )}
       </main>
+
+      {/* App-like Bottom Navigation Bar (Section 1: Billing / Section 2: Invoice History / Section 3: Catalog) */}
+      <BottomNavBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        invoicesCount={invoices.length}
+        isMiniMilitiaTheme={isMiniMilitiaTheme}
+      />
 
       {/* Footer */}
       <footer
-        className={`border-t text-center text-xs py-4 print:hidden font-mono ${
+        className={`border-t text-center text-xs py-4 mb-16 print:hidden font-mono ${
           isMiniMilitiaTheme
             ? 'bg-slate-950 text-slate-400 border-emerald-900/80'
             : 'bg-slate-900 text-slate-400 border-slate-800'
         }`}
       >
         <p className="font-bold text-amber-400">
-          SAI CLOTHES RAILWAY — Mini Militia Retail Billing Software
+          SAI CLOTHES RAILWAY — Retail Billing Software
         </p>
         <p className="text-[11px] text-slate-400 mt-0.5">
-          Opposite Railway Station • Automatic Discount, Direct PDF Download & Client WhatsApp System
+          Opposite Railway Station • Fast Billing, Thermal PDF & WhatsApp Link System
         </p>
       </footer>
 
-      {/* Invoice Modal for A4 or Thermal Preview/Print */}
+      {/* Full Screen Invoice Print/Share Modal */}
       {activeInvoiceForModal && (
         <InvoiceModal
           invoice={activeInvoiceForModal.invoice}
           shop={shop}
-          initialMode={activeInvoiceForModal.mode}
+          mode={activeInvoiceForModal.mode}
           autoSharePdf={activeInvoiceForModal.autoSharePdf}
           onClose={() => setActiveInvoiceForModal(null)}
         />
