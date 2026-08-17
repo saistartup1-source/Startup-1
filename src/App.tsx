@@ -9,6 +9,7 @@ import { Header } from './components/Header';
 import { InvoiceForm } from './components/InvoiceForm';
 import { InvoiceHistory } from './components/InvoiceHistory';
 import { QuickCatalogManager } from './components/QuickCatalogManager';
+import { BroadcastOffers } from './components/BroadcastOffers';
 import { InvoiceModal } from './components/InvoiceModal';
 import { PublicBillView } from './components/PublicBillView';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -43,8 +44,8 @@ export default function App() {
     }
   });
 
-  // UI state: Only 'new' | 'history' | 'catalog'
-  const [activeTab, setActiveTab] = useState<'new' | 'history' | 'catalog'>('new');
+  // UI state: 'new' | 'history' | 'catalog' | 'offers'
+  const [activeTab, setActiveTab] = useState<'new' | 'history' | 'catalog' | 'offers'>('new');
 
   const [activeInvoiceForModal, setActiveInvoiceForModal] = useState<{
     invoice: Invoice;
@@ -198,9 +199,16 @@ export default function App() {
             onDeleteProduct={handleDeleteQuickProduct}
           />
         )}
+
+        {activeTab === 'offers' && (
+          <BroadcastOffers
+            invoices={invoices}
+            shop={shop}
+          />
+        )}
       </main>
 
-      {/* App-like Bottom Navigation Bar (Section 1: Billing / Section 2: Invoice History / Section 3: Catalog) */}
+      {/* App-like Bottom Navigation Bar (Section 1: Billing / Section 2: Invoice History / Section 3: Catalog / Section 4: Offers) */}
       <BottomNavBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
