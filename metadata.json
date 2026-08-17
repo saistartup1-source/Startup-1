@@ -1,6 +1,6 @@
 {
-  "name": "Sai Clothes Railway Billing",
-  "description": "Automated billing and invoice generation software for Sai Clothes Railway with MRP & selling price discount calculation, printable invoices, and sales management.",
+  "name": "WhatsApp Billing Software",
+  "description": "WhatsApp billing and invoice generation software for Sai Clothes Railway with instant PDF sharing and retail sales management.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

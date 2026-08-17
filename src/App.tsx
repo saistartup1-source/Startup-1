@@ -56,6 +56,10 @@ export default function App() {
   const [publicInvoice, setPublicInvoice] = useState<Invoice | null>(null);
 
   useEffect(() => {
+    document.title = 'Visit again';
+  }, [publicInvoice]);
+
+  useEffect(() => {
     const { invoice, billNumber } = parseInvoiceFromUrl();
     if (invoice) {
       setPublicInvoice(invoice);
